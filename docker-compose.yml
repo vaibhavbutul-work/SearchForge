@@ -6,9 +6,9 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-searchforge_db}
       POSTGRES_USER: ${DB_USERNAME:-searchforge}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-searchforge_password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

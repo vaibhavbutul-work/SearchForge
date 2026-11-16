@@ -21,29 +21,30 @@ SearchForge is a custom search engine designed and built from scratch using **Ja
 ## 📁 Repository Structure
 
 ```
-d:\projects\
-├── src\
-│   ├── main\
-│   │   ├── java\com\searchforge\
-│   │   │   ├── SearchForgeApplication.java  # Main application entry point
-│   │   │   ├── controller\
-│   │   │   │   └── HealthController.java    # REST API (@RestController)
-│   │   │   ├── service\
-│   │   │   │   └── HealthService.java       # Health verification logic (@Service)
-│   │   │   └── dto\
-│   │   │       └── HealthResponse.java      # Java 21 Record DTO
-│   │   └── resources\
-│   │       └── application.yml              # Database & Spring configuration
-│   └── test\
-│       └── java\com\searchforge\
-│           └── HealthControllerTest.java    # Automated WebMvc unit test
-├── docs\
-│   ├── ARCHITECTURE.md                      # System design and request lifecycle
-│   ├── PHASE_1.md                           # Phase 1 deep-dive and technical log
-│   └── PROJECT_OVERVIEW.md                  # Complete project vision and roadmap
+SearchForge/
+├── backend/
+│   ├── pom.xml                              # Maven build file & dependencies
+│   └── src/
+│       ├── main/
+│       │   ├── java/com/searchforge/
+│       │   │   ├── SearchForgeApplication.java  # Main application entry point
+│       │   │   ├── controller/
+│       │   │   │   └── HealthController.java    # REST API (@RestController)
+│       │   │   ├── service/
+│       │   │   │   └── HealthService.java       # Health verification logic (@Service)
+│       │   │   └── dto/
+│       │   │       └── HealthResponse.java      # Java 21 Record DTO
+│       │   └── resources/
+│       │       └── application.yml              # Database & Spring configuration
+│       └── test/
+│           └── java/com/searchforge/
+│               └── HealthControllerTest.java    # WebMvc unit test
+├── docs/                                    # Architectural and phase documentation
+├── scripts/
+│   └── load-env.ps1                         # Helper script to load .env in PowerShell
 ├── docker-compose.yml                       # PostgreSQL 16 container definition
-├── pom.xml                                  # Maven dependencies and build plugin
-├── .gitignore                               # Git ignore rules
+├── .env.example                             # Environment variable template
+├── .gitignore                               # Git ignore rules (includes .env)
 └── README.md                                # Project summary and quickstart
 ```
 
@@ -56,20 +57,35 @@ d:\projects\
 - **Maven:** Apache Maven 3.9+
 - **Docker & Docker Compose:** For running the PostgreSQL container
 
-### 2. Start PostgreSQL Database
+### 2. Configure Environment Variables
+Copy the template to `.env` and set your database password:
+```powershell
+# From project root (D:\projects)
+Copy-Item .env.example .env
+```
+Open `.env` and replace `replace_with_your_secure_password` with your desired local password:
+- `DB_HOST=localhost`
+- `DB_PORT=5432`
+- `DB_NAME=searchforge_db`
+- `DB_USERNAME=searchforge`
+- `DB_PASSWORD=your_chosen_password`
+
+### 3. Start PostgreSQL Database
 ```powershell
 docker compose up -d
 ```
+> **Important Docker Volume Note:** PostgreSQL only sets the database password during initial container creation. If you change `DB_PASSWORD` in `.env` later, you must run `docker compose down -v` followed by `docker compose up -d` to re-initialize the volume (note: `-v` resets stored database data).
 
-### 3. Build & Run SearchForge Backend
+### 4. Load Environment Variables & Run Backend
+Because Spring Boot runs outside Docker, load the `.env` variables into your active PowerShell session before running the app:
 ```powershell
-# Compile the project
+# Dot-source the helper script to export variables into current terminal
+. .\scripts\load-env.ps1
+
+# Navigate to backend and run
+cd backend
 mvn clean compile
-
-# Run automated tests
 mvn test
-
-# Start the Spring Boot application
 mvn spring-boot:run
 ```
 
