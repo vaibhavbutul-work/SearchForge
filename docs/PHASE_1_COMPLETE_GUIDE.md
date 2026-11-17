@@ -29,6 +29,7 @@
 5. [Codebase Anatomy & Detailed File Explanations](#5-codebase-anatomy)
 6. [Troubleshooting Guide: Windows Environment Gotchas](#6-troubleshooting-guide)
 7. [Comprehensive Interview Preparation: Questions & Model Answers](#7-interview-preparation)
+8. [Corrections After Phase 1 Review](#8-corrections-after-phase-1-review)
 
 ---
 
@@ -72,10 +73,10 @@ We inspected the development environment and discovered:
 
 ### Step 4: Initializing the Spring Boot Maven Project
 - Created `.gitignore` ignoring build artifacts (`target/`), IDE configurations (`.idea/`, `.vscode/`), and environment secrets (`.env`).
-- Created `pom.xml` inheriting from `spring-boot-starter-parent:3.4.0` with Java 21 properties.
+- Created `pom.xml` inheriting from `spring-boot-starter-parent:3.4.0` with Java 21 properties *(initially at repository root; updated in the review, see Section 8)*.
 - Declared the 5 foundational dependencies.
 - Created the main application entry point: `SearchForgeApplication.java`.
-- Ran `mvn clean compile` in `D:\projects` to download dependencies from Maven Central and compile bytecode.
+- Ran initial compilation check to download dependencies from Maven Central and compile bytecode *(updated in the review, see Section 8)*.
 
 ### Step 5: Database Containerization with Docker Compose
 - Created `docker-compose.yml` declaring a containerized PostgreSQL 16 Alpine image.
@@ -83,19 +84,19 @@ We inspected the development environment and discovered:
 - Configured native healthcheck (`pg_isready`).
 
 ### Step 6: Application Configuration & HikariCP
-- Created `src/main/resources/application.yml`.
-- Configured database credentials using environment variables with safe development defaults (`${DB_URL:...}`).
-- Added `initialization-fail-timeout: 0` to HikariCP so the application can boot even if the database is temporarily starting up.
+- Created `application.yml` *(initially at repository root; updated in the review to `backend/src/main/resources/application.yml`, see Section 8)*.
+- Configured database credentials using environment variables *(updated in the review to no default password (fail-fast if DB_PASSWORD is missing), see Section 8)*.
+- Added `initialization-fail-timeout: 0` to HikariCP so the application can boot even if the database is temporarily starting up *(updated in the review, see Section 8)*.
 
 ### Step 7: Implementing the Health REST API
-- Created `HealthResponse.java` as an immutable Java 21 `record`.
-- Created `HealthService.java` to test live JDBC database connectivity using `connection.isValid(2)`.
-- Created `HealthController.java` to expose `GET /api/v1/health`.
-- Created `HealthControllerTest.java` verifying HTTP 200 and JSON structure using `MockMvc`.
+- Created `HealthResponse.java` as an immutable Java 21 `record` *(updated in the review, see Section 8)*.
+- Created `HealthService.java` to test live JDBC database connectivity using `connection.isValid(2)` *(updated in the review, see Section 8)*.
+- Created `HealthController.java` to expose `GET /api/v1/health` *(updated in the review, see Section 8)*.
+- Created `HealthControllerTest.java` verifying HTTP 200 and JSON structure using `MockMvc` *(updated in the review, see Section 8)*.
 
 ### Step 8: Live Verification
 - Started the database container: `docker compose up -d`.
-- Started the Spring Boot application: `mvn spring-boot:run`.
+- Started the Spring Boot application: `mvn spring-boot:run` *(updated in the review, see Section 8)*.
 - Verified live response: `{"status":"UP","service":"SearchForge","version":"1.0.0","database":"UP",...}`.
 
 ### Step 9: Version Control & GitHub
@@ -175,8 +176,8 @@ Maven Core Engine
        │
        └── Executes Standard Lifecycle Plugins:
              ├── clean    (deletes target/ folder)
-             ├── compile  (invokes javac on src/main/java)
-             ├── test     (executes JUnit tests in src/test/java)
+             ├── compile  (invokes javac on backend/src/main/java)
+             ├── test     (executes JUnit tests in backend/src/test/java)
              └── package  (bundles compiled code into a .jar)
 ```
 
@@ -230,51 +231,57 @@ Maven Core Engine
 Understanding this relationship is one of the most common technical interview topics:
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                      Your Code                         │
-│             (HealthService / Repositories)             │
-└───────────────────────────┬────────────────────────────┘
-                            │ Calls methods
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│            Spring Data JPA (Abstraction)               │
-│  - JpaRepository interface                             │
-│  - Generates query logic automatically                 │
-└───────────────────────────┬────────────────────────────┘
-                            │ Uses specification
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│        JPA: Jakarta Persistence API (Specification)    │
-│  - Collection of interfaces (@Entity, EntityManager)   │
-│  - Contains ZERO implementation code                   │
-└───────────────────────────┬────────────────────────────┘
-                            │ Implemented by
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│             Hibernate (ORM Engine / Implementation)    │
-│  - Object-Relational Mapping                           │
-│  - Translates Java objects into SQL statements         │
-│  - Manages 1st/2nd level cache & dirty checking        │
-└───────────────────────────┬────────────────────────────┘
-                            │ Executes SQL via
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                JDBC Driver (Low-Level Transport)       │
-│  - org.postgresql.Driver                               │
-│  - Opens TCP socket, handles database authentication,  │
-│    and transmits raw SQL strings across the network    │
-└───────────────────────────┬────────────────────────────┘
-                            │ Network TCP Socket (Port 5432)
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                 PostgreSQL 16 Server                   │
-└────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                        Your Code                         │
+│  - Phase 1: HealthService calls DataSource directly      │
+│  - Planned (Phase 3): Repositories call Spring Data      │
+└────────────────────┬─────────────────────────┬───────────┘
+                     │                         │
+                     │ (Planned: Repositories) │ (Phase 1: Direct JDBC)
+                     ▼                         │
+┌──────────────────────────────────────────┐   │
+│      Spring Data JPA (Abstraction)       │   │
+│  - JpaRepository interface               │   │
+│  - Generates query logic automatically   │   │
+└────────────────────┬─────────────────────┘   │
+                     │ Uses specification      │
+                     ▼                         │
+┌──────────────────────────────────────────┐   │
+│   JPA: Jakarta Persistence API (Spec)    │   │
+│  - Interfaces (@Entity, EntityManager)   │   │
+│  - ZERO implementation code              │   │
+└────────────────────┬─────────────────────┘   │
+                     │ Implemented by          │
+                     ▼                         │
+┌──────────────────────────────────────────┐   │
+│      Hibernate (ORM Engine / Impl)       │   │
+│  - Object-Relational Mapping             │   │
+│  - Translates objects to SQL             │   │
+│  - 1st-level cache: ON by default        │   │
+│  - 2nd-level cache: OFF by default       │   │
+└────────────────────┬─────────────────────┘   │
+                     │ Executes SQL via        │
+                     ▼                         ▼
+┌────────────────────┴─────────────────────────┴───────────┐
+│            JDBC Driver (Low-Level Transport)             │
+│  - org.postgresql.Driver & HikariCP DataSource           │
+│  - Opens TCP socket, handles database authentication,    │
+│    and transmits raw SQL / validation pings              │
+└────────────────────────────┬─────────────────────────────┘
+                             │ Network TCP Socket (Port 5432)
+                             ▼
+┌────────────────────────────┴─────────────────────────────┐
+│                   PostgreSQL 16 Server                   │
+└──────────────────────────────────────────────────────────┘
 ```
 
-- **JDBC:** The raw, low-level database communication protocol. Writing raw JDBC requires manual string queries, opening connections, and mapping `ResultSet` rows.
-- **JPA:** The official Java/Jakarta standard specification (interfaces only).
-- **Hibernate:** The industry-standard ORM (Object-Relational Mapping) framework that implements JPA. It automatically writes SQL dialect queries on your behalf.
-- **Spring Data JPA:** An additional convenience layer that lets you define an interface like `interface UserRepository extends JpaRepository<User, Long>` and automatically generates the complete CRUD implementation at runtime.
+- **JDBC:** The raw, low-level database communication protocol. In Phase 1, `HealthService` communicates **directly with JDBC** via `javax.sql.DataSource` and `connection.isValid(2)` to verify database socket reachability with zero ORM overhead.
+  - *Package Namespace Note:* `javax.sql.DataSource` is part of the JDK and did **NOT** move to `jakarta.*`. Only Java EE packages (servlet, persistence) did.
+- **JPA:** The official Java/Jakarta standard specification (interfaces only, e.g., `jakarta.persistence.*`).
+- **Hibernate:** The industry-standard ORM framework that implements JPA. It automatically writes SQL dialect queries on your behalf.
+  - **1st-Level Cache (Session):** Enabled by default in Hibernate; caches entities within a single transaction/session.
+  - **2nd-Level Cache (SessionFactory):** **Disabled by default** in Hibernate (confirmed by our server boot log: `HHH000026: Second-level cache disabled`). It requires an explicit caching provider (e.g., a JCache/Ehcache provider) and configuring `hibernate.cache.use_second_level_cache: true`.
+- **Spring Data JPA:** An additional convenience layer that lets you define an interface like `interface DocumentRepository extends JpaRepository<Document, Long>` and automatically generates the complete CRUD implementation at runtime. (Planned for Phase 3: Crawled Document Storage).
 
 ---
 
@@ -308,16 +315,24 @@ services:
   postgres:
     image: postgres:16-alpine      # Uses ultra-lightweight Alpine Linux (~40MB)
     container_name: searchforge-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: searchforge_db
-      POSTGRES_USER: searchforge
-      POSTGRES_PASSWORD: searchforge_password
+      POSTGRES_DB: ${DB_NAME:-searchforge_db}
+      POSTGRES_USER: ${DB_USERNAME:-searchforge}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
-      - "5432:5432"                 # Forwards host port 5432 -> container port 5432
+      - "${DB_PORT:-5432}:5432"     # Forwards host port -> container port 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data  # Data persists even if container is deleted!
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U searchforge -d searchforge_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-searchforge} -d ${DB_NAME:-searchforge_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
 ```
 
 ---
@@ -330,7 +345,7 @@ Establishing a database connection over a network requires:
 2. TLS/SSL certificate exchange and encryption handshake.
 3. Database authentication and process allocation on PostgreSQL.
 
-This handshake takes **30ms to 100ms per connection**. If our search engine had to create a new connection for every search query, throughput would be severely degraded.
+This handshake takes **30ms to 100ms per connection**. If our search engine had to create a new connection for every search query, throughput would drop dramatically.
 
 ### How HikariCP Solves This:
 HikariCP creates a pool of pre-established, authenticated database connections on application startup.
@@ -339,9 +354,11 @@ HikariCP creates a pool of pre-established, authenticated database connections o
 - In `application.yml`, we configured:
   ```yaml
   hikari:
+    pool-name: SearchForgeHikariPool
     maximum-pool-size: 10          # Max active database connections
     minimum-idle: 2               # Always keep 2 connections ready in RAM
-    initialization-fail-timeout: 0 # Resilient: boot even if DB is still starting
+    initialization-fail-timeout: 0 # Resilient: boot even if DB is unreachable
+    connection-timeout: 3000      # 3s fast-fail socket timeout
   ```
 
 ---
@@ -374,40 +391,46 @@ Git is a distributed version control system that tracks changes in source code o
 SearchForge strictly separates concerns into independent layers:
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                   Presentation Layer                   │
-│  com.searchforge.controller (HealthController.java)    │
-│  - Routes HTTP requests (/api/v1/health)               │
-│  - Validates query params and headers                  │
-│  - Thin: Zero business calculations or DB queries      │
-└───────────────────────────┬────────────────────────────┘
-                            │ Passes DTO
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                     Service Layer                      │
-│     com.searchforge.service (HealthService.java)       │
-│  - The "brain": Business logic, ranking, parsing       │
-│  - Manages transactional boundaries (@Transactional)   │
-│  - Interacts with DataSource and Repositories          │
-└───────────────────────────┬────────────────────────────┘
-                            │ Borrows Connection
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                   Persistence Layer                    │
-│      com.searchforge.repository / entity (Future)      │
-│  - Spring Data JPA repositories & Entities             │
-│  - Interacts with HikariCP Connection Pool             │
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                     Presentation Layer                     │
+│    com.searchforge.controller (HealthController.java)      │
+│  - Routes HTTP requests (/api/v1/health)                   │
+│  - Maps response to HTTP 200 (UP) or 503 (DOWN)            │
+│  - Thin: Zero business calculations or raw DB queries      │
+└─────────────────────────────┬──────────────────────────────┘
+                              │ Calls Service
+                              ▼
+┌────────────────────────────────────────────────────────────┐
+│                       Service Layer                        │
+│       com.searchforge.service (HealthService.java)         │
+│  - Business logic & health check orchestration             │
+│  - Phase 1: Borrows Connection directly from DataSource    │
+│  - Planned (Phase 3): Injects Document Repositories        │
+└──────────────┬─────────────────────────────┬───────────────┘
+               │                             │
+               │ (Phase 1: Direct JDBC)      │ (Planned: Phase 3)
+               ▼                             ▼
+┌──────────────────────────────┐ ┌───────────────────────────┐
+│  HikariCP DataSource / JDBC  │ │     Persistence Layer     │
+│  - Manages Connection Pool   │ │  - Spring Data Repos      │
+│  - connection.isValid(2)     │ │  - Hibernate Entities     │
+└──────────────┬───────────────┘ └───────────────────────────┘
+               │ JDBC TCP Socket (Port 5432)
+               ▼
+┌────────────────────────────────────────────────────────────┐
+│                    PostgreSQL 16 Server                    │
+│               searchforge-postgres Container               │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## The HTTP Request-Response Lifecycle
 
-Here is the exact step-by-step path of a request:
+Here is the exact step-by-step path of a health check request:
 
 ```
-1. Client (Browser / Postman) issues HTTP GET to http://localhost:8080/api/v1/health
+1. Client (Browser / Postman / cURL) issues HTTP GET to http://localhost:8080/api/v1/health
    │
 2. OS routes TCP packet to Port 8080
    │
@@ -421,17 +444,21 @@ Here is the exact step-by-step path of a request:
    │
 7. HealthService borrows a connection from HikariCP pool and calls connection.isValid(2)
    │
-8. PostgreSQL replies "OK" over TCP socket; connection is returned to pool
+8. Database Connectivity Outcome:
+   ├── Branch A (Database is UP):
+   │     - Socket ping succeeds; connection is returned to pool via try-with-resources
+   │     - HealthService creates HealthResponse record with status: "UP", database: "UP"
+   │     - HealthController inspects response.isUp() (true) -> returns ResponseEntity.ok(response)
+   │     - Jackson serializes record into JSON (ignoring boolean isUp() via @JsonIgnore)
+   │     - Client receives HTTP 200 OK + {"status":"UP","database":"UP",...}
    │
-9. HealthService constructs an immutable HealthResponse record
-   │
-10. HealthController wraps the record in ResponseEntity.ok(record)
-   │
-11. Jackson (HttpMessageConverter) serializes the HealthResponse record into JSON bytes
-   │
-12. Tomcat constructs HTTP 200 OK response with Content-Type: application/json
-   │
-13. Browser receives packet and displays the formatted JSON on screen!
+   └── Branch B (Database is DOWN / Unreachable):
+         - HikariCP times out or throws SQLException; connection is closed safely
+         - HealthService logs full stack trace via SLF4J (log.error("...", e))
+         - HealthService masks all errors, returning safe status: "DOWN", database: "DOWN"
+         - HealthController inspects response.isUp() (false) -> returns ResponseEntity.status(503).body(response)
+         - Jackson serializes record into JSON (zero exception text leaked)
+         - Client receives HTTP 503 Service Unavailable + {"status":"DOWN","database":"DOWN",...}
 ```
 
 ---
@@ -451,15 +478,15 @@ In our project, we introduced `HealthResponse` as a **Data Transfer Object (DTO)
 # 5. Codebase Anatomy
 
 ### 1. `pom.xml`
-- **Location:** `D:\projects\pom.xml`
-- **Role:** Declares dependencies: `spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `postgresql`, `spring-boot-starter-actuator`, and `spring-boot-starter-test`.
+- **Location:** `backend/pom.xml`
+- **Role:** Declares dependencies: `spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `postgresql`, `spring-boot-starter-actuator`, and `spring-boot-starter-test`. Targets Java 21 and Spring Boot 3.4.0.
 
 ### 2. `SearchForgeApplication.java`
-- **Location:** `D:\projects\src\main\java\com\searchforge\SearchForgeApplication.java`
+- **Location:** `backend/src/main/java/com/searchforge/SearchForgeApplication.java`
 - **Role:** Application bootstrapper. Annotated with `@SpringBootApplication`.
 
 ### 3. `HealthResponse.java`
-- **Location:** `D:\projects\src\main\java\com\searchforge\dto\HealthResponse.java`
+- **Location:** `backend/src/main/java/com/searchforge/dto/HealthResponse.java`
 - **Code:**
   ```java
   public record HealthResponse(
@@ -468,34 +495,57 @@ In our project, we introduced `HealthResponse` as a **Data Transfer Object (DTO)
       String version,
       String database,
       Instant timestamp
-  ) {}
+  ) {
+      public static final String STATUS_UP = "UP";
+      public static final String STATUS_DOWN = "DOWN";
+
+      @JsonIgnore
+      public boolean isUp() {
+          return STATUS_UP.equals(status);
+      }
+  }
   ```
-- **Why a Record?** In Java 8, creating an immutable class with 5 fields required ~60 lines of code (private final fields, constructor, getters, `equals()`, `hashCode()`, and `toString()`). In Java 21, a `record` generates all of this automatically in 7 lines.
+- **Why a Record?** In Java 21, a `record` provides immutable data carriers with auto-generated constructors, getters, `equals()`, `hashCode()`, and `toString()`. Annotating `isUp()` with `@JsonIgnore` ensures Jackson does not serialize an unintended `"up": true/false` field into the JSON contract.
 
 ### 4. `HealthService.java`
-- **Location:** `D:\projects\src\main\java\com\searchforge\service\HealthService.java`
-- **Role:** Verifies database health:
+- **Location:** `backend/src/main/java/com/searchforge/service/HealthService.java`
+- **Role:** Verifies database connectivity directly over JDBC:
   ```java
   private String verifyDatabaseConnection() {
       try (Connection connection = dataSource.getConnection()) {
           if (connection.isValid(2)) {
-              return "UP";
+              return HealthResponse.STATUS_UP;
           }
-          return "DOWN (Validation timeout)";
+          log.warn("Database connection is invalid or socket validation timed out");
+          return HealthResponse.STATUS_DOWN;
       } catch (Exception e) {
-          return "DOWN (" + e.getMessage() + ")";
+          // SLF4J logs full stack trace server-side; response masks all details
+          log.error("Database health check failed", e);
+          return HealthResponse.STATUS_DOWN;
       }
   }
   ```
   *(Uses `try-with-resources` to guarantee that the database connection is immediately closed and returned to the HikariCP pool).*
 
 ### 5. `HealthController.java`
-- **Location:** `D:\projects\src\main\java\com\searchforge\controller\HealthController.java`
-- **Role:** Exposes `GET /api/v1/health`. Uses Constructor Injection to receive `HealthService`.
+- **Location:** `backend/src/main/java/com/searchforge/controller/HealthController.java`
+- **Role:** Exposes `GET /api/v1/health`. Maps `response.isUp()` to **HTTP 200 OK** and downstream failure to **HTTP 503 Service Unavailable**.
 
 ### 6. `HealthControllerTest.java`
-- **Location:** `D:\projects\src\test\java\com\searchforge\HealthControllerTest.java`
-- **Role:** Slice test using `@WebMvcTest(HealthController.class)`. It does not boot the whole server or database; it mocks `HealthService` and verifies that the endpoint produces valid JSON with HTTP status 200.
+- **Location:** `backend/src/test/java/com/searchforge/HealthControllerTest.java`
+- **Role:** Web slice test using `@WebMvcTest(HealthController.class)`. Mocks `HealthService` to verify that `UP` maps to HTTP 200, `DOWN` maps to HTTP 503, and `$.up` does not exist in JSON.
+
+### 7. `HealthServiceTest.java`
+- **Location:** `backend/src/test/java/com/searchforge/service/HealthServiceTest.java`
+- **Role:** Pure Mockito unit test (no Spring context). Tests `isValid(true)`, `isValid(false)`, verifies error masking when `getConnection()` throws `SQLException` (asserting zero sensitive text or class names in `response.toString()`), and verifies `verify(connection).close()` is called in all branches.
+
+### 8. `SearchForgeApplicationTests.java`
+- **Location:** `backend/src/test/java/com/searchforge/SearchForgeApplicationTests.java`
+- **Role:** Hermetic context test using `@SpringBootTest` and `@MockitoBean DataSource`. Configured with `hibernate.boot.allow_jdbc_metadata_access: false` in `backend/src/test/resources/application.yml` (which replaces, rather than merges with, the main `application.yml` during test execution) to prove complete Spring bean wiring without requiring an active PostgreSQL instance (proving bean wiring only, not database connectivity).
+
+### 9. Maven Wrapper (`mvnw`, `mvnw.cmd`)
+- **Location:** `backend/mvnw`, `backend/mvnw.cmd`, `backend/.mvn/wrapper/maven-wrapper.properties`
+- **Role:** Script-only (`only-script`) Maven 3.9.9 wrapper. Guarantees reproducible builds across developer machines and CI pipelines with zero binary `.jar` files in Git. Executable bit `100755` tracked in Git for Unix compatibility.
 
 ---
 
@@ -512,7 +562,7 @@ In our project, we introduced `HealthResponse` as a **Data Transfer Object (DTO)
   $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
   ```
 
-### Gotcha 3: Terminal Appears "Frozen" After `mvn spring-boot:run`
+### Gotcha 3: Terminal Appears "Frozen" After `.\mvnw.cmd spring-boot:run`
 - **Cause:** Unlike normal CLI programs, a Spring Boot backend is a **long-running daemon process**. Tomcat holds open port 8080 and blocks the terminal while listening for incoming network traffic.
 - **Fix:** This is normal behavior! Leave the terminal running and send requests from a browser or Postman.
 
@@ -527,7 +577,7 @@ Master these answers for your software engineering interviews:
 > - **JDBC** is the low-level Java API that directly opens network sockets and sends raw SQL strings to the database.  
 > - **JPA (Jakarta Persistence API)** is an official Java **specification** containing interfaces and annotations (like `@Entity` and `EntityManager`), but no actual implementation code.  
 > - **Hibernate** is the **ORM engine** that implements the JPA specification. It translates Java object operations into dialect-specific SQL.  
-> - Our code interacts with **Spring Data JPA**, which is an abstraction layer on top of Hibernate.
+> - In Phase 1, our code interacts **directly with plain JDBC** via `javax.sql.DataSource` and `connection.isValid(2)`. We do not use Spring Data JPA or Hibernate yet (there are zero entities and zero repositories). While `spring-boot-starter-data-jpa` is present on the classpath for future document storage (Phase 3), Phase 1 health probing is deliberately written with raw JDBC to avoid ORM overhead and verify database reachability directly.
 
 ### Q2: Why did we use a Java 21 `record` for our DTO instead of a standard class or returning a database Entity?
 > **Answer:**  
@@ -555,7 +605,49 @@ Master these answers for your software engineering interviews:
 > 2. Embedded **Apache Tomcat** accepts the TCP socket and constructs an `HttpServletRequest`.
 > 3. Tomcat delegates to Spring's **`DispatcherServlet`** (Front Controller).
 > 4. `DispatcherServlet` queries `HandlerMapping` to find the matching controller method (`HealthController.getHealth()`).
-> 5. The controller delegates business logic to `HealthService`, which borrows a connection from the **HikariCP pool** to verify database health.
-> 6. The controller returns a `HealthResponse` record wrapped in `ResponseEntity.ok()`.
-> 7. Spring's `HttpMessageConverter` (powered by **Jackson**) serializes the Java record into JSON text.
-> 8. Tomcat writes the HTTP 200 OK response with `Content-Type: application/json` back across the TCP socket to the client.
+> 5. The controller delegates business logic to `HealthService`, which borrows a connection from the **HikariCP pool** to verify database health (`connection.isValid(2)`).
+> 6. Outcome handling:
+>    - **If UP:** The controller returns `ResponseEntity.ok(response)`. Jackson serializes the record into JSON (omitting `isUp()` via `@JsonIgnore`). Tomcat writes the HTTP 200 OK response with `Content-Type: application/json`.
+>    - **If DOWN:** `HealthService` logs the stack trace via SLF4J, masks all error details into safe `"DOWN"` statuses, and the controller returns `ResponseEntity.status(503).body(response)`. Tomcat writes the HTTP 503 Service Unavailable response.
+
+---
+
+# 8. Corrections After Phase 1 Review
+
+Following an in-depth architecture and reliability review of Phase 1, several targeted hardening improvements were implemented:
+
+### 1. Repository Layout Restructuring
+- **Change:** Relocated Java backend source code, tests, resources, and build configuration from project root into a dedicated `backend/` directory (`backend/src/...` and `backend/pom.xml`).
+- **Why:** Separates backend Java application code from repository-level files, Docker orchestration, documentation, and future multi-module expansion.
+
+### 2. Credential Externalization & Security Hardening
+- **Change:** Removed hardcoded database credentials from `application.yml` and `docker-compose.yml`. Credentials now resolve dynamically via environment variables (`DB_URL`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`).
+- **Why:** Prevents credentials from leaking into Git. Provided `.env.example` as a template, added a PowerShell helper (`scripts/load-env.ps1`), and configured fail-fast `${DB_PASSWORD}` without default passwords. Confirmed `.env` is git-ignored and never tracked.
+
+### 3. Health Endpoint Hardening & Information Leakage Prevention
+- **Change:** Updated `GET /api/v1/health` to return **HTTP 200 OK** when database is `UP` and **HTTP 503 Service Unavailable** when database is `DOWN` (replacing unconditional HTTP 200 OK).
+- **Why:** HTTP 503 accurately signals an upstream service/dependency outage rather than an unhandled application bug. Masked all exception text (returning safe status `"DOWN"` instead of raw SQL error strings). Added `@JsonIgnore` to `HealthResponse.isUp()` to avoid leaking `"up": false` in JSON. Configured SLF4J (`log.error("Database health check failed", e)`) to log full stack traces on the server side without polluting client responses.
+
+### 4. HikariCP Resilient Startup & Fast-Fail Timeout
+- **Change:** Configured `spring.datasource.hikari.initialization-fail-timeout: 0` and reduced `spring.datasource.hikari.connection-timeout` from 30,000 ms to 3,000 ms in `backend/src/main/resources/application.yml`.
+- **Why:** 
+  - `initialization-fail-timeout: 0`: HikariCP still attempts to obtain and validate an initial connection; if the database is unreachable, the pool starts anyway (preventing immediate JVM crash on boot). If a connection is obtained but validation fails, startup fails.
+  - Startup duration: When PostgreSQL is down, Hibernate's `JdbcEnvironmentInitiator` requests JDBC metadata during startup, which blocks the main thread waiting for Hikari's connection timeout.
+  - Measured Impact:
+    - With default 30s timeout: startup froze for **30,019 ms** ([MEASURED], total boot time **33.463 s**).
+    - With 3s timeout: startup freeze dropped to **3,016 ms** ([MEASURED], total boot time **6.748 s**).
+    - Live health endpoint call with database down responds in **3.127 s** ([MEASURED]) with HTTP 503 instead of hanging the client for 30 seconds.
+
+### 5. Multi-Tier Automated Testing
+- **Change:** Expanded test coverage to **6 automated tests** ([MEASURED] in `.\mvnw.cmd test` executing in **8.388 s**):
+  - `HealthControllerTest` (2 tests, `@WebMvcTest`): Verifies HTTP 200 mapping for UP, HTTP 503 mapping for DOWN, and asserts `$.up` does not exist in JSON.
+  - `HealthServiceTest` (3 tests, pure Mockito unit tests): Verifies `isValid(true)`, `isValid(false)`, exception handling with error masking, and proves connection return via `verify(connection).close()`.
+  - `SearchForgeApplicationTests` (1 test, `@SpringBootTest`): Verifies complete Spring Boot bean wiring and context bootstrap using `@MockitoBean DataSource` and `hibernate.boot.allow_jdbc_metadata_access: false` in `backend/src/test/resources/application.yml`. Note that `backend/src/test/resources/application.yml` replaces (does not merge with) the main `application.yml` during test execution, and this test proves application context and bean wiring only, not live database connectivity.
+
+### 6. Apache Maven Wrapper (`only-script`) Pinned to 3.9.9
+- **Change:** Generated the Maven 3.9.9 wrapper using `mvn wrapper:wrapper "-Dmaven=3.9.9" "-Dtype=only-script"`.
+- **Why:** Guarantees deterministic, reproducible builds across developer environments and CI/CD pipelines without requiring pre-installed Maven on the host system. The `only-script` distribution stores zero binary `.jar` files in Git. Set executable bit `100755` on `backend/mvnw` in the Git index, and created root `.gitattributes` to enforce LF endings for `mvnw` and CRLF for `*.cmd`.
+
+### 7. Spring Boot Version Audit & Lifecycle Status
+- **Change:** Audited the official support lifecycle at `spring.io/projects/spring-boot#support`.
+- **Why:** Spring Boot 3.4 reached OSS End of Life on December 31, 2025. Per project decision, SearchForge remains on Spring Boot 3.4.0 for Phase 1 as an accepted limitation; **Planned: upgrade to Spring Boot 4.1.x** on a separate branch before Phase 2.
