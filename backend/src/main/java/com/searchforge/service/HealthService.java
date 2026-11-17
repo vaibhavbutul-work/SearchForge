@@ -1,6 +1,8 @@
 package com.searchforge.service;
 
 import com.searchforge.dto.HealthResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,8 @@ import java.time.Instant;
  */
 @Service
 public class HealthService {
+
+    private static final Logger log = LoggerFactory.getLogger(HealthService.class);
 
     private final DataSource dataSource;
     private final String appName;
@@ -30,7 +34,9 @@ public class HealthService {
 
     public HealthResponse checkHealth() {
         String dbStatus = verifyDatabaseConnection();
-        String overallStatus = "UP".equals(dbStatus) ? "UP" : "DEGRADED";
+        String overallStatus = HealthResponse.STATUS_UP.equals(dbStatus) 
+            ? HealthResponse.STATUS_UP 
+            : HealthResponse.STATUS_DOWN;
 
         return new HealthResponse(
             overallStatus,
@@ -44,11 +50,14 @@ public class HealthService {
     private String verifyDatabaseConnection() {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(2)) {
-                return "UP";
+                return HealthResponse.STATUS_UP;
             }
-            return "DOWN (Validation timeout)";
+            log.warn("Database connection is invalid or socket validation timed out");
+            return HealthResponse.STATUS_DOWN;
         } catch (Exception e) {
-            return "DOWN (" + e.getMessage() + ")";
+            // In SLF4J, passing Throwable as the final argument automatically logs the stack trace
+            log.error("Database health check failed", e);
+            return HealthResponse.STATUS_DOWN;
         }
     }
 }
