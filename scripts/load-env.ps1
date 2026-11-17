@@ -11,6 +11,15 @@ if (-not (Test-Path $envFile)) {
     return
 }
 
+# Ensure WindowsPowerShell is in PATH for mvnw.cmd if running under PowerShell 7
+$powershellCmd = Get-Command "powershell" -ErrorAction SilentlyContinue
+if (-not $powershellCmd) {
+    $winPS = "C:\Windows\System32\WindowsPowerShell\v1.0"
+    if (Test-Path $winPS) {
+        $env:Path = "$winPS;$env:Path"
+    }
+}
+
 Get-Content $envFile | ForEach-Object {
     $line = $_.Trim()
     # Skip empty lines and comment lines starting with #
