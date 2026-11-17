@@ -45,7 +45,8 @@ class HealthControllerTest {
             .andExpect(jsonPath("$.service").value("SearchForge"))
             .andExpect(jsonPath("$.version").value("1.0.0"))
             .andExpect(jsonPath("$.database").value("UP"))
-            .andExpect(jsonPath("$.timestamp").value("2026-11-16T12:00:00Z"));
+            .andExpect(jsonPath("$.timestamp").value("2026-11-16T12:00:00Z"))
+            .andExpect(jsonPath("$.up").doesNotExist());
     }
 
     @Test
@@ -67,6 +68,7 @@ class HealthControllerTest {
             .andExpect(jsonPath("$.service").value("SearchForge"))
             .andExpect(jsonPath("$.version").value("1.0.0"))
             .andExpect(jsonPath("$.database").value("DOWN"))
-            .andExpect(jsonPath("$.timestamp").value("2026-11-16T12:00:00Z"));
+            .andExpect(jsonPath("$.timestamp").value("2026-11-16T12:00:00Z"))
+            .andExpect(jsonPath("$.up").doesNotExist());
     }
 }
