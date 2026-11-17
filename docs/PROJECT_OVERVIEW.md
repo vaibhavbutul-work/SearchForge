@@ -7,7 +7,7 @@ SearchForge is a custom search engine designed to index and search across techni
 ## 1. Motivation & Goals
 
 1. **Understand Search Engine Fundamentals:** Learn how search engines actually work by building the crawler, document parser, inverted index, and ranking engines from scratch.
-2. **Master Enterprise Java Backend Development:** Utilize Spring Boot 3, Spring Data JPA, HikariCP, PostgreSQL, and RESTful architectures following industry best practices.
+2. **Master Enterprise Java Backend Development:** Utilize Spring Boot, Spring Data JPA, HikariCP, PostgreSQL, and RESTful architectures following industry best practices.
 3. **Dual Pipeline Decoupling:** Understand that crawling/indexing runs asynchronously and independently from user search queries.
 4. **Portfolio & Interview Preparation:** Provide deep technical justification for architectural and design decisions.
 
@@ -61,12 +61,13 @@ User Query ("dependency injection")
 
 ## 3. Technology Stack Rationale
 
-| Component | Technology | Rationale |
+| Component | Technology | Rationale & Phase Status |
 | :--- | :--- | :--- |
-| **Language** | Java 21 | Modern LTS release providing Records, Pattern Matching, and Virtual Threads (Project Loom). |
-| **Framework** | Spring Boot 3.4 | Industry-standard dependency injection, autoconfiguration, and REST API support. |
-| **Persistence** | Spring Data JPA / Hibernate | High-productivity data access abstraction over relational database tables. |
-| **Database** | PostgreSQL 16 | Proven relational database offering ACID compliance, robust indexing, and JSON support. |
-| **Connection Pool** | HikariCP | High-performance, low-latency JDBC connection pooling bundled with Spring Boot. |
-| **Build Tool** | Apache Maven | Declarative dependency management and standard build lifecycle. |
-| **Containerization** | Docker Compose | Reproducible, isolated local environment for development databases. |
+| **Language** | Java 21 LTS | Modern LTS release providing Records, Pattern Matching, and Virtual Threads (Project Loom). |
+| **Framework** | Spring Boot 3.4.0 | Foundation framework. Current version is 3.4.0 (*Planned: upgrade to Spring Boot 4.1.x on a separate branch before Phase 2*). |
+| **Persistence** | Direct JDBC (Phase 1) / Spring Data JPA & Hibernate (Phase 3) | In Phase 1, `HealthService` uses raw JDBC via `javax.sql.DataSource` and `connection.isValid(2)` for zero-overhead socket verification. Spring Data JPA / Hibernate is on classpath for future document storage (Phase 3). |
+| **Database** | PostgreSQL 16 | Relational database offering ACID compliance, robust indexing (B-Tree, GIN, GiST), and JSONB support. |
+| **Connection Pool** | HikariCP | High-performance, low-latency JDBC connection pool configured with 3000ms timeout and resilient boot policy. |
+| **Build Tool** | Apache Maven 3.9.9 Wrapper | Script-only (`only-script`) Maven Wrapper (`.\mvnw.cmd` / `./mvnw`) guaranteeing reproducible builds without installing Maven locally. |
+| **Containerization** | Docker Compose | Isolated local PostgreSQL 16 container (`docker-compose.yml`) with persistent volume and healthcheck. |
+| **Repository Layout** | `backend/` Subdirectory | Application source and build configuration isolated in `backend/` to keep root clean for Docker, scripts, and documentation. |
