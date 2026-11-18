@@ -1,0 +1,40 @@
+package com.searchforge.crawler.repository;
+
+import com.searchforge.crawler.model.CrawledDocument;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Spring Data JPA Repository for persisting and querying CrawledDocument entities.
+ */
+@Repository
+public interface CrawledDocumentRepository extends JpaRepository<CrawledDocument, Long> {
+
+    /**
+     * Checks if a document with the exact URL has already been crawled and persisted.
+     */
+    boolean existsByUrl(String url);
+
+    /**
+     * Checks if identical content (based on SHA-256 hash) has already been persisted.
+     */
+    boolean existsByContentHash(String contentHash);
+
+    /**
+     * Finds a crawled document by its canonical URL.
+     */
+    Optional<CrawledDocument> findByUrl(String url);
+
+    /**
+     * Counts how many documents have been crawled for a given domain.
+     */
+    long countByDomain(String domain);
+
+    /**
+     * Retrieves all crawled documents for a given domain.
+     */
+    List<CrawledDocument> findByDomain(String domain);
+}
