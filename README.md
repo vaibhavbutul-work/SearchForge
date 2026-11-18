@@ -5,16 +5,17 @@ SearchForge is a custom search engine designed and built from scratch using **Ja
 
 ---
 
-## 🛠️ Technology Stack (Phase 1)
+## 🛠️ Technology Stack
 
-- **Language:** Java 21 (LTS) — Records, Pattern Matching, Modern JVM features
+- **Language:** Java 21 (LTS) — Records, Pattern Matching, Virtual Threads (Project Loom)
 - **Framework:** Spring Boot 4.1.2 (Spring Framework 7) — Modular WebMvc Starters
-- **Data Persistence:** Direct JDBC via `javax.sql.DataSource` and `connection.isValid(2)` for Phase 1 health probing; Spring Data JPA & Hibernate 6 on classpath for future document storage (Phase 3)
-- **Database:** PostgreSQL 16 (Containerized via Docker Compose)
+- **Web Crawling & Parsing:** Jsoup 1.18.3 (DOM parsing, relative link resolution, noise stripping, size guard)
+- **Data Persistence:** Spring Data JPA & Hibernate 7 (`CrawledDocument` entity with indexes on domain & content hash); Direct JDBC for health checks
+- **Database:** PostgreSQL 16 (Containerized via Docker Compose) & In-memory H2 for hermetic tests
 - **Connection Pool:** HikariCP (`connection-timeout: 3000ms`, `initialization-fail-timeout: 0`)
 - **Build & Dependency Tool:** Apache Maven 3.9.9 via Maven Wrapper (`.\mvnw.cmd` / `./mvnw`, `only-script`)
-- **Testing:** JUnit 5, Mockito 5, Spring Boot Test (`@WebMvcTest`, `@SpringBootTest`) — 6 automated tests
-- **Monitoring:** Spring Boot Actuator
+- **Testing:** JUnit 5, Mockito 5, WireMock 3.10.0, Spring Boot Test (`@WebMvcTest`, `@SpringBootTest`) — **55 automated tests**
+- **Monitoring:** Spring Boot Actuator & `/api/v1/crawler/status` telemetry endpoint
 
 ---
 
@@ -173,10 +174,10 @@ SearchForge includes **6 automated tests** ([MEASURED] in `.\mvnw.cmd test` runn
 ## 🗺️ Project Roadmap
 
 - [x] **Phase 1: Project Setup and Backend Foundation** *(Hardened & Fully Tested)*
-- [ ] **Phase 2: Web Crawler (Jsoup, BFS URL Queue, Politeness, Robotstxt)**
-- [ ] **Phase 3: Document Processing & Storage (Tokenization, Normalization, Spring Data JPA Entities)**
+- [x] **Phase 2: Web Crawler (Jsoup, BFS Queue, RFC 9309 Politeness, Virtual Threads, REST API)** *(Completed — 55/55 Tests Passing)*
+- [ ] **Phase 3: Document Processing & Storage (Tokenization, Normalization, Inverted Index Prep)**
 - [ ] **Phase 4: Inverted Index (Postings Lists, Term Frequencies, Dictionary)**
 - [ ] **Phase 5: Search & Ranking Engine (TF-IDF, BM25 Scoring)**
 - [ ] **Phase 6: Search Interface (Web Frontend)**
-- [ ] **Phase 7: Advanced Features (Caching, Concurrent Crawling via Virtual Threads)**
+- [ ] **Phase 7: Advanced Features (Caching, Performance Benchmarking, Optimization)**
 - [ ] **Phase 8: Dockerization, Deployment & Benchmarking**

@@ -11,30 +11,32 @@ SearchForge follows the industry-standard **Layered Architecture Pattern**:
 ```
 ┌────────────────────────────────────────────────────────────┐
 │                     Presentation Layer                     │
-│    com.searchforge.controller (HealthController.java)      │
-│  - Routes HTTP requests (/api/v1/health)                   │
-│  - Maps response to HTTP 200 (UP) or 503 (DOWN)            │
-│  - Thin: Zero business calculations or raw DB queries      │
+│  - HealthController (/api/v1/health)                       │
+│  - CrawlerController (/api/v1/crawler: /start, /stop,      │
+│    /status, /reset, /documents)                            │
 └─────────────────────────────┬──────────────────────────────┘
-                              │ Calls Service
+                              │ Calls Service / Engine
                               ▼
 ┌────────────────────────────────────────────────────────────┐
-│                       Service Layer                        │
-│       com.searchforge.service (HealthService.java)         │
-│  - Business logic & health check orchestration             │
-│  - Phase 1: Borrows Connection directly from DataSource    │
-│  - Planned (Phase 3): Injects Document Repositories        │
+│             Service & Crawler Engine Layer                 │
+│  - HealthService: DB health & socket ping                  │
+│  - CrawlEngine: BFS crawler orchestration (Virtual Threads)│
+│  - UrlFrontier, UrlNormalizer, VisitedFilter               │
+│  - RobotsTxtService, PolitenessRateLimiter                 │
+│  - DocumentFetcher, HtmlParser                             │
 └──────────────┬─────────────────────────────┬───────────────┘
                │                             │
-               │ (Phase 1: Direct JDBC)      │ (Planned: Phase 3)
+               │ (Direct JDBC Health Probe)  │ (JPA Operations)
                ▼                             ▼
 ┌──────────────────────────────┐ ┌───────────────────────────┐
 │  HikariCP DataSource / JDBC  │ │     Persistence Layer     │
-│  - Manages Connection Pool   │ │  - Spring Data Repos      │
-│  - connection.isValid(2)     │ │  - Hibernate Entities     │
-└──────────────┬───────────────┘ └───────────────────────────┘
-               │ JDBC TCP Socket (Port 5432)
-               ▼
+│  - Manages Connection Pool   │ │  - CrawledDocumentRepo    │
+│  - connection.isValid(2)     │ │  - CrawledDocument Entity │
+└──────────────┬───────────────┘ └─────────────┬─────────────┘
+               │                               │
+               └───────────────┬───────────────┘
+                               │ JDBC TCP Socket (Port 5432)
+                               ▼
 ┌────────────────────────────────────────────────────────────┐
 │                    PostgreSQL 16 Server                    │
 │               searchforge-postgres Container               │
@@ -42,16 +44,14 @@ SearchForge follows the industry-standard **Layered Architecture Pattern**:
 ```
 
 ### Architectural Separation:
-1. **Presentation Layer (`com.searchforge.controller`):**
-   - Purely handles HTTP protocol concerns: mapping URLs, status code negotiation (HTTP 200 vs 503), and JSON response generation.
-   - Thin layer: zero business algorithms or direct database queries.
-2. **Service Layer (`com.searchforge.service`):**
-   - Orchestrates business workflows and dependency checks.
-   - In Phase 1, `HealthService` directly accesses `javax.sql.DataSource` to run low-level socket validation (`connection.isValid(2)`) with zero ORM overhead.
-   - Planned for Phase 3: Injects Spring Data repositories for document and posting storage.
-3. **Persistence Layer (Phase 3 Planned):**
-   - Will encapsulate entity mapping (`@Entity`) and query generation via `JpaRepository`.
-   - In Phase 1, Spring Data JPA / Hibernate is on the classpath for future use, but no entities or repositories exist.
+1. **Presentation Layer (`com.searchforge.controller`, `com.searchforge.crawler.controller`):**
+   - Handles HTTP protocol concerns: mapping URLs, status code negotiation (HTTP 200, 202, 409, 503), input validation, and JSON serialization.
+   - Thin layer: delegates asynchronous tasks and data retrieval directly to service engines.
+2. **Service & Engine Layer (`com.searchforge.service`, `com.searchforge.crawler.engine`):**
+   - Orchestrates core business algorithms and asynchronous execution.
+   - `CrawlEngine` manages Project Loom virtual thread workers, frontier polling, politeness enforcement, fetching, and DOM parsing.
+3. **Persistence Layer (`com.searchforge.crawler.repository`, `model`):**
+   - Encapsulates entity mappings (`CrawledDocument` with indexes on `domain` and `content_hash`) and repository operations via Spring Data JPA `JpaRepository`.
 4. **Database Transport:**
    - HikariCP connection pool manages persistent TCP sockets to PostgreSQL 16 on port 5432.
 

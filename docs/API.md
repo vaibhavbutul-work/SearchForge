@@ -121,3 +121,76 @@ Standard Spring Boot Actuator endpoint used by orchestration platforms (e.g. Kub
 ### Security & Information Disclosure Audit:
 - Actuator endpoint details expose only component statuses and disk thresholds (`show-details: always`).
 - Zero database credentials, user passwords, internal private network IPs, or environment variables are exposed on any public endpoint.
+
+---
+
+## 3. Web Crawler Endpoints (`/api/v1/crawler`)
+
+Provides operational control, telemetry monitoring, and document inspection for the Web Crawler.
+
+### 3.1. Initiate Asynchronous Crawl
+- **Method:** `POST`
+- **Path:** `/api/v1/crawler/start`
+- **Headers:** `Content-Type: application/json`
+- **Request Body (Optional):**
+  ```json
+  {
+    "seedUrls": ["https://en.wikipedia.org/wiki/Computer_science"]
+  }
+  ```
+- **Responses:**
+  - `202 Accepted`: Crawl started in background.
+    ```json
+    {
+      "state": "RUNNING",
+      "isRunning": true,
+      "pagesCrawled": 0,
+      "pagesFailed": 0,
+      "frontierQueueSize": 1,
+      "startedAt": "2026-11-18T23:00:00Z",
+      "elapsedSeconds": 0
+    }
+    ```
+  - `409 Conflict`: Crawl is already running or stopping.
+    ```json
+    {
+      "error": "Crawl engine is already active",
+      "state": "RUNNING"
+    }
+    ```
+
+### 3.2. Query Crawler Telemetry
+- **Method:** `GET`
+- **Path:** `/api/v1/crawler/status`
+- **Response:**
+  - `200 OK`:
+    ```json
+    {
+      "state": "COMPLETED",
+      "isRunning": false,
+      "pagesCrawled": 42,
+      "pagesFailed": 1,
+      "frontierQueueSize": 0,
+      "startedAt": "2026-11-18T23:00:00Z",
+      "elapsedSeconds": 68
+    }
+    ```
+
+### 3.3. Stop Running Crawl
+- **Method:** `POST`
+- **Path:** `/api/v1/crawler/stop`
+- **Response:**
+  - `200 OK`: Crawl engine transitioned to `STOPPING` / `STOPPED`.
+
+### 3.4. Reset Crawler State
+- **Method:** `POST`
+- **Path:** `/api/v1/crawler/reset`
+- **Response:**
+  - `200 OK`: State reset to `IDLE`, queues and caches purged.
+
+### 3.5. List Crawled Documents (Paginated)
+- **Method:** `GET`
+- **Path:** `/api/v1/crawler/documents?page=0&size=20&sort=crawledAt,desc`
+- **Response:**
+  - `200 OK`: Paginated document summaries containing 200-character content snippets.
+
