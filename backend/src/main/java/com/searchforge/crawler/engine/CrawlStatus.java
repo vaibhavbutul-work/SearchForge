@@ -21,4 +21,10 @@ public record CrawlStatus(
         Instant startedAt,
         Duration elapsedDuration
 ) {
+    /**
+     * Helper indicating if the crawl engine is actively running.
+     */
+    public boolean isRunning() {
+        return state == CrawlState.RUNNING;
+    }
 }

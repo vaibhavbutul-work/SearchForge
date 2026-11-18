@@ -27,6 +27,7 @@ class CrawlerPropertiesTest {
         assertEquals(10L, properties.crawlDelayMs());
         assertEquals(1000, properties.connectTimeoutMs());
         assertEquals(1000, properties.readTimeoutMs());
+        assertEquals(2, properties.concurrency());
     }
 
     @Test
@@ -40,7 +41,8 @@ class CrawlerPropertiesTest {
                 0,
                 -50,
                 0,
-                -10
+                -10,
+                0
         );
 
         assertEquals("SearchForgeBot/1.0", fallback.userAgent());
@@ -51,6 +53,12 @@ class CrawlerPropertiesTest {
         assertEquals(1000L, fallback.crawlDelayMs());
         assertEquals(3000, fallback.connectTimeoutMs());
         assertEquals(5000, fallback.readTimeoutMs());
+        assertEquals(4, fallback.concurrency());
+
+        CrawlerProperties fallbackExplicit = new CrawlerProperties(
+                null, null, null, -1, 0, -50, 0, -10, -5
+        );
+        assertEquals(4, fallbackExplicit.concurrency());
 
         // Test immutability: List.copyOf prevents modification
         assertThrows(UnsupportedOperationException.class, () -> fallback.seedUrls().add("https://malicious.com"));

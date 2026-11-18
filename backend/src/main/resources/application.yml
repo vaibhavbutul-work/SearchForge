@@ -53,3 +53,4 @@ crawler:
   crawl-delay-ms: 1000
   connect-timeout-ms: 3000
   read-timeout-ms: 5000
+  concurrency: 4

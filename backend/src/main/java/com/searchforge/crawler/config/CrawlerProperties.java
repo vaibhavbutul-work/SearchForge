@@ -19,7 +19,8 @@ public record CrawlerProperties(
         int maxPages,
         long crawlDelayMs,
         int connectTimeoutMs,
-        int readTimeoutMs
+        int readTimeoutMs,
+        int concurrency
 ) {
     /**
      * Compact constructor providing defensive copying and robust defaults.
@@ -44,6 +45,9 @@ public record CrawlerProperties(
         }
         if (readTimeoutMs <= 0) {
             readTimeoutMs = 5000;
+        }
+        if (concurrency <= 0) {
+            concurrency = 4;
         }
     }
 }

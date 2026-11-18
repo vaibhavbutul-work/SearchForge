@@ -47,7 +47,8 @@ class RobotsTxtServiceTest {
                 100,
                 1000,
                 3000,
-                5000
+                5000,
+                2
         );
         service = new RobotsTxtService(properties);
     }

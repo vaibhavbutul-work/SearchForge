@@ -40,7 +40,8 @@ class UrlFrontierTest {
                 100, // maxPages
                 1000,
                 3000,
-                5000
+                5000,
+                2
         );
 
         frontier = new UrlFrontier(properties, visitedFilter, normalizer);

@@ -19,8 +19,15 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -57,6 +64,7 @@ public class CrawlEngine {
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private final AtomicInteger pagesCrawled = new AtomicInteger(0);
     private final AtomicInteger pagesFailed = new AtomicInteger(0);
+    private final Set<String> visitedContentHashes = ConcurrentHashMap.newKeySet();
     private volatile Instant startedAt;
 
     public CrawlEngine(CrawlerProperties properties,
@@ -87,7 +95,35 @@ public class CrawlEngine {
     }
 
     /**
-     * Executes the crawl loop synchronously using custom seed URLs.
+     * Executes the crawl asynchronously in a Java 21 Virtual Thread.
+     * Returns a CompletableFuture that completes when the crawl terminates.
+     *
+     * @param seedUrls The entry-point URLs to begin crawling.
+     * @return CompletableFuture containing the final CrawlStatus.
+     */
+    public CompletableFuture<CrawlStatus> startAsync(List<String> seedUrls) {
+        CompletableFuture<CrawlStatus> future = new CompletableFuture<>();
+        Thread.ofVirtual().name("crawl-supervisor").start(() -> {
+            try {
+                runCrawl(seedUrls);
+                future.complete(getStatus());
+            } catch (Throwable t) {
+                log.error("Crawl supervisor virtual thread encountered an error: {}", t.getMessage(), t);
+                future.completeExceptionally(t);
+            }
+        });
+        return future;
+    }
+
+    /**
+     * Executes the crawl asynchronously using default configured seed URLs.
+     */
+    public CompletableFuture<CrawlStatus> startAsync() {
+        return startAsync(properties.seedUrls());
+    }
+
+    /**
+     * Executes the crawl loop using Java 21 Virtual Threads for concurrent workers.
      *
      * @param seedUrls The entry-point URLs to begin crawling.
      */
@@ -113,22 +149,26 @@ public class CrawlEngine {
             }
         }
 
-        log.info("Crawl started with {} seeds (seeded={}, maxDepth={}, maxPages={})",
-                seeds.size(), seededCount, properties.maxDepth(), properties.maxPages());
+        int concurrency = properties.concurrency();
+        log.info("Crawl started with {} seeds (seeded={}, maxDepth={}, maxPages={}, concurrency={})",
+                seeds.size(), seededCount, properties.maxDepth(), properties.maxPages(), concurrency);
 
-        // 2. Core Crawling Loop
-        while (isRunning.get() && !frontier.isEmpty() && pagesCrawled.get() < properties.maxPages()) {
-            Optional<CrawlTask> taskOpt = frontier.poll();
-            if (taskOpt.isEmpty()) {
-                break;
+        // 2. Concurrent Worker Execution Loop via Java 21 Virtual Threads
+        AtomicInteger activeWorkers = new AtomicInteger(0);
+
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int i = 0; i < concurrency; i++) {
+                int workerId = i + 1;
+                futures.add(executor.submit(() -> workerLoop(workerId, activeWorkers)));
             }
 
-            CrawlTask task = taskOpt.get();
-            try {
-                processTask(task);
-            } catch (Exception e) {
-                log.error("Unhandled exception processing task '{}': {}", task.url(), e.getMessage(), e);
-                pagesFailed.incrementAndGet();
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (Exception e) {
+                    log.error("Virtual worker terminated with error: {}", e.getMessage(), e);
+                }
             }
         }
 
@@ -143,6 +183,53 @@ public class CrawlEngine {
                     pagesCrawled.get(), pagesFailed.get(), frontier.size());
         }
         isRunning.set(false);
+    }
+
+    /**
+     * Worker execution loop run inside a Java 21 Virtual Thread.
+     */
+    private void workerLoop(int workerId, AtomicInteger activeWorkers) {
+        log.debug("Virtual worker-{} started on thread: {}", workerId, Thread.currentThread());
+        int emptyPollCount = 0;
+
+        while (isRunning.get() && pagesCrawled.get() < properties.maxPages()) {
+            Optional<CrawlTask> taskOpt = frontier.poll();
+
+            if (taskOpt.isPresent()) {
+                emptyPollCount = 0;
+                activeWorkers.incrementAndGet();
+                try {
+                    if (pagesCrawled.get() < properties.maxPages()) {
+                        processTask(taskOpt.get());
+                    }
+                } catch (Exception e) {
+                    log.error("Worker-{} unhandled exception processing task: {}", workerId, e.getMessage(), e);
+                    pagesFailed.incrementAndGet();
+                } finally {
+                    activeWorkers.decrementAndGet();
+                }
+            } else {
+                // Frontier is empty: check if other workers are still busy and might enqueue more URLs
+                if (activeWorkers.get() == 0 && frontier.isEmpty()) {
+                    log.debug("Worker-{} exiting: frontier is empty and activeWorkers is 0.", workerId);
+                    break;
+                }
+
+                // Temporary starve: other workers are still fetching/parsing outbound links.
+                // Yield virtual thread cleanly (unmounts virtual thread from OS carrier thread).
+                try {
+                    Thread.sleep(50);
+                    emptyPollCount++;
+                    if (emptyPollCount > 100 && activeWorkers.get() == 0) {
+                        break;
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        log.debug("Virtual worker-{} finished.", workerId);
     }
 
     /**
@@ -163,6 +250,11 @@ public class CrawlEngine {
         long delayMs = robotsTxtService.getCrawlDelayMs(url).orElse(properties.crawlDelayMs());
         rateLimiter.delayIfNeeded(domain, delayMs);
 
+        // Check if stopped while waiting on rate limiter
+        if (!isRunning.get()) {
+            return;
+        }
+
         // C. Fetch raw HTML document
         Optional<FetchedDocument> fetchedOpt = fetcher.fetch(url);
         if (fetchedOpt.isEmpty()) {
@@ -173,9 +265,9 @@ public class CrawlEngine {
         // D. Parse HTML, extract text, and discover links
         ParsedDocument parsed = htmlParser.parse(fetchedOpt.get());
 
-        // E. Content-Hash deduplication: skip saving if exact text body is already in DB
-        if (repository.existsByContentHash(parsed.contentHash())) {
-            log.debug("Skipping save for '{}': duplicate content hash '{}' already stored", url, parsed.contentHash());
+        // E. Content-Hash deduplication: skip saving if exact text body is already in memory or DB
+        if (!visitedContentHashes.add(parsed.contentHash()) || repository.existsByContentHash(parsed.contentHash())) {
+            log.debug("Skipping save for '{}': duplicate content hash '{}' already processed", url, parsed.contentHash());
         } else {
             CrawledDocument entity = new CrawledDocument(
                     parsed.url(),
@@ -186,10 +278,14 @@ public class CrawlEngine {
                     parsed.httpStatusCode(),
                     parsed.crawledAt()
             );
-            repository.save(entity);
-            pagesCrawled.incrementAndGet();
-            log.info("Persisted document #{}: [{}] {} (depth={})",
-                    pagesCrawled.get(), parsed.domain(), parsed.title(), depth);
+            try {
+                repository.save(entity);
+                pagesCrawled.incrementAndGet();
+                log.info("Persisted document #{}: [{}] {} (depth={})",
+                        pagesCrawled.get(), parsed.domain(), parsed.title(), depth);
+            } catch (Exception e) {
+                log.warn("Failed to persist document '{}' (possible concurrent duplicate): {}", url, e.getMessage());
+            }
         }
 
         // F. Enqueue outbound links for subsequent BFS hop (if depth < maxDepth)
@@ -235,6 +331,7 @@ public class CrawlEngine {
         stop();
         frontier.clear();
         visitedFilter.clearMemory();
+        visitedContentHashes.clear();
         robotsTxtService.clearCache();
         rateLimiter.clear();
         pagesCrawled.set(0);
