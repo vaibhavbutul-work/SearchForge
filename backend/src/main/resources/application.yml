@@ -41,3 +41,15 @@ app:
   name: SearchForge
   version: 1.0.0
   description: Custom Search Engine Built From Scratch
+
+crawler:
+  user-agent: "SearchForgeBot/1.0 (+https://github.com/vaibhavbutul-work/SearchForge)"
+  seed-urls:
+    - "https://example.com"
+  allowed-domains:
+    - "example.com"
+  max-depth: 2
+  max-pages: 50
+  crawl-delay-ms: 1000
+  connect-timeout-ms: 3000
+  read-timeout-ms: 5000

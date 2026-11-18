@@ -18,3 +18,15 @@ spring:
       hibernate:
         boot:
           allow_jdbc_metadata_access: false
+
+crawler:
+  user-agent: "SearchForgeBot/1.0 (TestEnvironment)"
+  seed-urls:
+    - "http://localhost:8089/test"
+  allowed-domains:
+    - "localhost"
+  max-depth: 1
+  max-pages: 5
+  crawl-delay-ms: 10
+  connect-timeout-ms: 1000
+  read-timeout-ms: 1000
