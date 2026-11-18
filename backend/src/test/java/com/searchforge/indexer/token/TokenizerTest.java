@@ -23,7 +23,7 @@ class TokenizerTest {
     @DisplayName("Should tokenize simple sentence and assign sequential 0-based positions")
     void shouldTokenizeSimpleSentence() {
         String input = "Fast search engine";
-        List<ProcessedToken> tokens = tokenizer.tokenize(input);
+        List<ProcessedToken> tokens = tokenizer.tokenizeUnstemmed(input);
 
         assertEquals(3, tokens.size());
         assertEquals(new ProcessedToken("fast", 0), tokens.get(0));
@@ -35,7 +35,7 @@ class TokenizerTest {
     @DisplayName("Should normalize casing and strip diacritics / accents")
     void shouldNormalizeCaseAndStripAccents() {
         String input = "Café Naïve Résumé";
-        List<ProcessedToken> tokens = tokenizer.tokenize(input);
+        List<ProcessedToken> tokens = tokenizer.tokenizeUnstemmed(input);
 
         assertEquals(3, tokens.size());
         assertEquals("cafe", tokens.get(0).term());
@@ -47,7 +47,7 @@ class TokenizerTest {
     @DisplayName("Should handle punctuation, hyphens, and possessive suffixes correctly")
     void shouldHandlePunctuationAndPossessives() {
         String input = "SearchForge's web-crawler, indexing 100+ pages!";
-        List<ProcessedToken> tokens = tokenizer.tokenize(input);
+        List<ProcessedToken> tokens = tokenizer.tokenizeUnstemmed(input);
 
         List<String> terms = tokens.stream().map(ProcessedToken::term).toList();
         assertEquals(List.of("searchforge", "web", "crawler", "indexing", "100", "pages"), terms);
@@ -59,6 +59,22 @@ class TokenizerTest {
         assertEquals(3, tokens.get(3).position()); // indexing
         assertEquals(4, tokens.get(4).position()); // 100
         assertEquals(5, tokens.get(5).position()); // pages
+    }
+
+    @Test
+    @DisplayName("Should apply Porter stemming by default in standard tokenize method")
+    void shouldApplyPorterStemmingByDefault() {
+        String input = "Crawling crawlers crawled and indexing documents";
+        List<ProcessedToken> tokens = tokenizer.tokenize(input);
+
+        List<String> terms = tokens.stream().map(ProcessedToken::term).toList();
+        // "and" is stop word (dropped)
+        // "crawling" -> "crawl"
+        // "crawlers" -> "crawler"
+        // "crawled"  -> "crawl"
+        // "indexing" -> "index"
+        // "documents" -> "document"
+        assertEquals(List.of("crawl", "crawler", "crawl", "index", "document"), terms);
     }
 
     @Test
