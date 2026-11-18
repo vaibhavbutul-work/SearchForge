@@ -8,7 +8,7 @@ SearchForge is a custom search engine designed and built from scratch using **Ja
 ## 🛠️ Technology Stack (Phase 1)
 
 - **Language:** Java 21 (LTS) — Records, Pattern Matching, Modern JVM features
-- **Framework:** Spring Boot 3.4.0 *(Planned: upgrade to Spring Boot 4.1.x on a separate branch before Phase 2)*
+- **Framework:** Spring Boot 4.1.2 (Spring Framework 7) — Modular WebMvc Starters
 - **Data Persistence:** Direct JDBC via `javax.sql.DataSource` and `connection.isValid(2)` for Phase 1 health probing; Spring Data JPA & Hibernate 6 on classpath for future document storage (Phase 3)
 - **Database:** PostgreSQL 16 (Containerized via Docker Compose)
 - **Connection Pool:** HikariCP (`connection-timeout: 3000ms`, `initialization-fail-timeout: 0`)

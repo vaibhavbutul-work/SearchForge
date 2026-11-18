@@ -17,7 +17,7 @@ This document catalogs every technology, framework, database, and library used i
 
 | Technology | Version | Purpose & Configuration |
 | :--- | :--- | :--- |
-| **Spring Boot** | 3.4.0 | Foundational microservice framework providing autoconfiguration, dependency injection, and embedded Tomcat. Current version is 3.4.0 (*Planned: upgrade to Spring Boot 4.1.x on a separate branch before Phase 2*). |
+| **Spring Boot** | 4.1.2 | Foundational framework providing autoconfiguration, dependency injection, and modular WebMvc starters. Upgraded to 4.1.2 before Phase 2. |
 | **Embedded Apache Tomcat** | 10.1.x (via Spring Boot) | Servlet container listening on HTTP port 8080. Handles TCP handshakes, HTTP parsing, and request dispatching to Spring's `DispatcherServlet`. |
 | **Spring Web MVC** | 6.2.x (via Spring Boot) | REST controller layer (`@RestController`, `@GetMapping`, `ResponseEntity`) routing `/api/v1/health` and negotiating HTTP 200 vs. HTTP 503 status codes. |
 | **Spring Boot Actuator** | 3.4.0 | Exposes standard component health probes (`/actuator/health`), application metadata (`/actuator/info`), and metrics (`/actuator/metrics`). |
