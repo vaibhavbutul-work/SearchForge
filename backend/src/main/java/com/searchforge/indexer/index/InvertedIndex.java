@@ -40,6 +40,11 @@ public interface InvertedIndex {
     int getTotalDocuments();
 
     /**
+     * Returns a sorted list of all indexed document IDs across the corpus.
+     */
+    List<Long> getAllDocumentIds();
+
+    /**
      * Returns the average document length across the entire indexed corpus (avgdl).
      */
     double getAverageDocumentLength();

@@ -74,6 +74,13 @@ public class InMemoryInvertedIndex implements InvertedIndex {
     }
 
     @Override
+    public List<Long> getAllDocumentIds() {
+        List<Long> ids = new ArrayList<>(docLengths.keySet());
+        Collections.sort(ids);
+        return Collections.unmodifiableList(ids);
+    }
+
+    @Override
     public double getAverageDocumentLength() {
         int n = getTotalDocuments();
         return n > 0 ? (double) totalTokens.get() / n : 0.0;
