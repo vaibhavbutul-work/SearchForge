@@ -1,5 +1,6 @@
 package com.searchforge.ranking.weight;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 /**
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
  * the classic negative IDF flaw where common terms penalize document relevance.
  */
 @Component
+@Primary
 public class Bm25IdfCalculator implements IdfCalculator {
 
     @Override
