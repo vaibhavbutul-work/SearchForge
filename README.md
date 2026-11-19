@@ -5,7 +5,7 @@
 [![Spring Boot 4.1.2](https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Project Loom](https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge)](https://openjdk.org/projects/loom/)
-[![Automated Tests](https://img.shields.io/badge/Tests-118%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](https://github.com/vaibhavbutul-work/SearchForge)
+[![Automated Tests](https://img.shields.io/badge/Tests-120%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](https://github.com/vaibhavbutul-work/SearchForge)
 [![Architecture](https://img.shields.io/badge/Architecture-First_Principles_IR-blueviolet?style=for-the-badge)](https://github.com/vaibhavbutul-work/SearchForge)
 
 > **"What I cannot create, I do not understand." — Richard Feynman**  
@@ -24,7 +24,7 @@
 | **Dual-Tier Inverted Index** | **RAM Tier:** `ConcurrentHashMap` dictionary with ascending binary-search `PostingsList` containers.<br>**Persistent Tier:** PostgreSQL 16 schema with compound unique constraints and portable positional encoding. |
 | **Positional Phrase Search** | Exact phrase search evaluated via **linear positional intersection** ($O(P_1 + P_2)$) and sliding-window proximity searches ($|pos_1 - pos_2| \le k$). |
 | **Boolean Query Engine** | **Recursive-descent AST parser** supporting operator precedence (`NOT` > `AND` > `OR`), nested parentheses, implicit `AND`, and **two-pointer linear merges** ($O(L_1 + L_2)$). |
-| **Zero-Flake Test Suite** | **118 automated tests** passing in ~18 seconds; hermetic integration tests running against an in-memory H2 database without Docker or internet dependencies. |
+| **Zero-Flake Test Suite** | **120 automated tests** passing in ~20 seconds; hermetic integration tests running against an in-memory H2 database without Docker or internet dependencies. |
 
 ---
 
@@ -104,7 +104,7 @@ flowchart TD
 | :---: | :--- | :---: | :--- | :---: |
 | **Phase 1** | **Foundation & Infrastructure** | **Completed** | Modular Spring Boot 4 setup, Docker Compose PostgreSQL 16 Alpine, HikariCP, Health REST API, hermetic context tests | **7** |
 | **Phase 2** | **Web Crawler Subsystem** | **Completed** | Loom Virtual Threads, BFS FIFO frontier, RFC 3986 normalizer, RFC 9309 robots parser, Jsoup DOM stripper, SHA-256 deduplication, crawler REST API | **55** |
-| **Phase 3** | **Inverted Index & Boolean Retrieval** | **Completed** | Unicode NFD normalizer, 130+ stop-word filter, 5-step Porter stemmer, positional inverted index, relational PostgreSQL schema, recursive-descent query parser, two-pointer linear merge, Boolean search REST API | **118** |
+| **Phase 3** | **Inverted Index & Boolean Retrieval** | **Completed** | Unicode NFD normalizer, 130+ stop-word filter, 5-step Porter stemmer, positional inverted index, relational PostgreSQL schema, recursive-descent query parser, two-pointer linear merge, Boolean search REST API | **120** |
 | **Phase 4** | **Scoring, Ranking & Relevance Engine** | **In Progress** | Okapi BM25 probabilistic model ($k_1, b$), Robertson–Spärck Jones IDF, TF-IDF Vector Space Model (VSM), cosine similarity, multi-field boosting (BM25F), Bounded Min-Heap Top-$K$ priority queue | *Pending* |
 | **Phase 5** | **Query Engine & Search Experience** | **Upcoming** | Query suggestion, spelling correction (Levenshtein edit distance / SymSpell), prefix trie autocomplete, dynamic snippet highlighting | *Pending* |
 | **Phase 6** | **Web Dashboard & Deployment** | **Upcoming** | Modern React search dashboard, live query telemetry, latency percentiles (p50/p95/p99), containerized production deployment | *Pending* |
@@ -228,15 +228,15 @@ GET /api/v1/search/boolean?q=(java OR python) AND "web server" NOT deprecated&li
 
 ---
 
-## 🧪 Automated Testing Audit (118 Tests)
+## 🧪 Automated Testing Audit (120 Tests)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 118, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~18.7s)
+[INFO] Tests run: 120, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~20.2s)
 ```
 
-SearchForge includes **118 automated tests** covering unit, integration, and web slice layers:
+SearchForge includes **120 automated tests** covering unit, integration, and web slice layers:
 - **`TokenizerTest` (9 tests):** Unicode NFD normalization, diacritics removal, stop-word gaps, stemming integration.
 - **`PorterStemmerTest` (5 tests):** 5-step cascades, plural/past reductions, vowel/measure conditions, idempotency.
 - **`InMemoryInvertedIndexTest` (6 tests):** Term frequencies, document counts, $\text{avgdl}$, vocabulary sizes, 8-thread concurrency safety.
@@ -269,7 +269,7 @@ docker compose up -d
 . .\scripts\load-env.ps1
 ```
 
-### 3. Run Build & Verify All 118 Tests
+### 3. Run Build & Verify All 120 Tests
 ```powershell
 cd backend
 

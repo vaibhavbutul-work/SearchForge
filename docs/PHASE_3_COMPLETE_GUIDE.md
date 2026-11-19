@@ -298,21 +298,21 @@ flowchart TD
 
 ## 6. Comprehensive Verification & Test Audit
 
-Across all 8 tasks of Phase 3, **118 automated tests** were authored and verified. All tests run hermetically offline without requiring external network connections.
+Across all 8 tasks of Phase 3, **120 automated tests** were authored and verified. All tests run hermetically offline without requiring external network connections.
 
 ### Test Suite Summary:
 * `TokenizerTest`: 9 tests verifying Unicode NFD normalization, diacritics removal, stop-word gaps, and stemming integration.
 * `PorterStemmerTest`: 5 tests verifying 5-step cascades, plural/past reductions, vowel/measure conditions, and idempotency.
 * `InMemoryInvertedIndexTest`: 6 tests verifying term frequencies, document counts, $\text{avgdl}$, vocabulary sizes, and 8-thread concurrency safety.
-* `PositionalIndexSearcherTest`: 5 tests verifying exact multi-word phrase matching, non-consecutive position rejection, and sliding-window proximity searches.
+* `PositionalIndexSearcherTest`: 6 tests verifying exact multi-word phrase matching, non-consecutive position rejection, sliding-window proximity searches, and repeated terms.
 * `IndexPersistenceTest`: 6 tests verifying JPA entity mapping, unique constraints on `term` and `(term_id, document_id)`, comma-separated positions encoding, and aggregate JPQL queries.
 * `IndexingEngineTest`: 6 tests verifying single-document indexing, idempotent re-indexing, batch corpus synchronization, cold startup warmup from storage, and empty document handling.
-* `BooleanQueryParserTest`: 11 tests verifying AST construction, operator precedence (`NOT` > `AND` > `OR`), parentheses overrides, implicit `AND`, and syntax error validation.
+* `BooleanQueryParserTest`: 12 tests verifying AST construction, operator precedence (`NOT` > `AND` > `OR`), parentheses overrides, implicit `AND`, and syntax error validation.
 * `BooleanRetrievalEngineTest`: 9 tests verifying end-to-end `AND`, `OR`, `NOT`, exact phrases, nested expressions, and pure negations against the corpus universe.
 * `IndexControllerTest`: 6 tests verifying REST API endpoints (`/api/v1/index/*` and `/api/v1/search/boolean`) using Spring MockMvc.
 * **Prior Phase Tests (Preserved):** 55 crawler and health tests.
 
-**Total Automated Tests:** **118 Passing** (Failures: 0, Errors: 0, Skipped: 0).
+**Total Automated Tests:** **120 Passing** (Failures: 0, Errors: 0, Skipped: 0).
 
 ---
 

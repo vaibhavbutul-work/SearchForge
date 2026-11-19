@@ -108,4 +108,28 @@ class PositionalIndexSearcherTest {
         assertTrue(searcher.searchPhrase(null).isEmpty());
         assertTrue(searcher.searchPhrase("nonexistent").isEmpty());
     }
+
+    @Test
+    @DisplayName("Should correctly evaluate phrases with repeated words")
+    void shouldMatchPhraseWithRepeatedTerms() {
+        // Doc 1 contains "step by step" -> "step" at pos 0 and "step" at pos 2 ("by" is a stop word)
+        index.addDocument(1L, tokenizer.tokenize("Follow this step by step guide"));
+
+        // Doc 2 contains "step" only once
+        index.addDocument(2L, tokenizer.tokenize("Take one step forward"));
+
+        // Exact phrase with stop word gap: "step by step" -> tokens: [step @ 0, step @ 2]
+        List<PhraseMatch> matches = searcher.searchPhrase("step by step");
+        assertEquals(1, matches.size());
+        assertEquals(1L, matches.get(0).documentId());
+        assertEquals(1, matches.get(0).matchCount());
+
+        // Repeated adjacent words: "echo echo"
+        index.addDocument(3L, tokenizer.tokenize("Listen to the echo echo in the canyon"));
+        index.addDocument(4L, tokenizer.tokenize("An echo in the valley"));
+
+        List<PhraseMatch> echoMatches = searcher.searchPhrase("echo echo");
+        assertEquals(1, echoMatches.size());
+        assertEquals(3L, echoMatches.get(0).documentId());
+    }
 }

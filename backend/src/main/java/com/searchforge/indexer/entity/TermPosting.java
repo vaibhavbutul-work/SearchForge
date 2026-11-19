@@ -36,7 +36,7 @@ public class TermPosting {
     @Column(name = "term_frequency", nullable = false)
     private int termFrequency;
 
-    @Column(nullable = false, length = 2048)
+    @Column(name = "positions", nullable = false, columnDefinition = "TEXT")
     private String positions;
 
     protected TermPosting() {

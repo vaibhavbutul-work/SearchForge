@@ -141,6 +141,15 @@ class BooleanQueryParserTest {
     }
 
     @Test
+    @DisplayName("Should throw IllegalArgumentException on malformed syntax like empty parentheses or trailing operators")
+    void shouldThrowOnMalformedSyntax() {
+        assertThrows(IllegalArgumentException.class, () -> parser.parse("()"));
+        assertThrows(IllegalArgumentException.class, () -> parser.parse("AND OR"));
+        assertThrows(IllegalArgumentException.class, () -> parser.parse("java AND"));
+        assertThrows(IllegalArgumentException.class, () -> parser.parse("OR python"));
+    }
+
+    @Test
     @DisplayName("Should return empty Optional for blank queries")
     void shouldReturnEmptyForBlankQuery() {
         assertTrue(parser.parse("").isEmpty());
