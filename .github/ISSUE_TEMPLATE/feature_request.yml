@@ -1,0 +1,28 @@
+name: 💡 Feature Request
+description: Propose an enhancement or algorithmic addition to SearchForge
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest an idea or new information retrieval capability for SearchForge.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of the limitation.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Algorithm
+      description: Describe how this feature should work (e.g. BM25F field weighting, Trie autocomplete, SymSpell).
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Links to papers, IR benchmarks, or architecture diagrams.

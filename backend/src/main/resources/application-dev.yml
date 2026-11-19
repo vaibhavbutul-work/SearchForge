@@ -20,3 +20,14 @@ ranking:
   bm25:
     k1: 1.2
     b: 0.75
+
+crawler:
+  user-agent: "SearchForgeBot/1.0 (+https://github.com/vaibhavbutul-work/SearchForge)"
+  allowed-domains:
+    - "www.postgresql.org"
+    - "docs.oracle.com"
+    - "spring.io"
+  max-depth: 1
+  max-pages: 15
+  crawl-delay-ms: 1000
+  concurrency: 2

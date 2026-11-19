@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SearchForge — Technical Architecture & Interactive Documentation Portal</title>
+  <meta name="description" content="SearchForge is a custom search engine built from first principles in Java 21 LTS and Spring Boot, featuring web crawling, inverted indexing, Boolean retrieval, and Okapi BM25 ranking.">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Left Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-badge">SF</div>
+      <div class="logo-text">
+        <h1>SearchForge</h1>
+        <span>Engine v1.0 • Java 21</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-group-title">Overview</div>
+      <a href="#overview" class="nav-link active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Project Summary
+      </a>
+      <a href="#metrics" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Verified Metrics
+      </a>
+
+      <div class="nav-group-title">Interactive Visualizers</div>
+      <a href="#pipeline" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Search Pipeline Animator
+      </a>
+      <a href="#bm25" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+        BM25 Saturation Graph
+      </a>
+      <a href="#inverted-index" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Inverted Index Explorer
+      </a>
+      <a href="#crawler" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
+        Crawler BFS Explorer
+      </a>
+      <a href="#topk" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Top-K Min-Heap Explorer
+      </a>
+      <a href="#architecture" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        Architecture Inspector
+      </a>
+
+      <div class="nav-group-title">Engineering Specs</div>
+      <a href="#api" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        REST API Reference
+      </a>
+      <a href="#quickstart" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Getting Started
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>Built From Scratch</span>
+      <span style="color: var(--accent-emerald);">● Zero Lucene</span>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="main-wrapper">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="search-status-pill">
+        <span class="pulse-dot"></span>
+        <span>185 Tests Passing • 100% Hermetic</span>
+      </div>
+      <div class="quick-links">
+        <a href="https://github.com/vaibhavbutul-work/SearchForge" target="_blank" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub Repository
+        </a>
+        <a href="#quickstart" class="btn btn-primary">Run Locally (< 1 min)</a>
+      </div>
+    </header>
+
+    <div class="content-container">
+
+      <!-- HERO SECTION -->
+      <section id="overview" class="hero-section">
+        <span class="hero-tag">Search Engine Built From First Principles</span>
+        <h1 class="hero-title">
+          Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
+        </h1>
+        <p class="hero-description">
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, and <strong>Okapi BM25 probabilistic relevance ranking</strong>.
+        </p>
+
+        <!-- Metrics Cards -->
+        <div id="metrics" class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Automated Tests</div>
+            <div class="metric-value" style="color: var(--accent-emerald);">185 / 185</div>
+            <div class="metric-sub">100% Hermetic Passing</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Live Tokens Indexed</div>
+            <div class="metric-value" style="color: var(--accent-cyan);">21,406</div>
+            <div class="metric-sub">16 Real Web Pages Crawled</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Inverted Postings</div>
+            <div class="metric-value" style="color: var(--accent-indigo);">4,526</div>
+            <div class="metric-sub">1,999 Stemmed Terms</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Relevance Quality</div>
+            <div class="metric-value" style="color: var(--accent-amber);">1.000 MRR</div>
+            <div class="metric-sub">NDCG@5: 0.980 • &lt; 1 ms</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INTERACTIVE 1: SEARCH PIPELINE ANIMATOR -->
+      <section id="pipeline" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Interactive Data-Flow Engine</span>
+          <h2 class="section-title">The Search Engine Pipeline</h2>
+          <p class="section-desc">Watch real data transform as it travels through each stage: from raw HTML download down to BM25 top-K results.</p>
+        </div>
+
+        <div class="pipeline-card">
+          <!-- Toolbar & Controls -->
+          <div class="pipeline-toolbar">
+            <div class="controls-cluster">
+              <button id="pipelinePlayBtn" class="btn btn-primary"><span>▶ Play</span></button>
+              <button id="pipelinePrevBtn" class="btn btn-secondary">◀ Prev</button>
+              <button id="pipelineNextBtn" class="btn btn-secondary">Next ▶</button>
+              <button id="pipelineRestartBtn" class="btn btn-secondary">↺ Restart</button>
+            </div>
+            <div class="speed-control">
+              <span id="currentStageBadge" class="pipeline-step-badge">Stage 1 / 12: Web Sources</span>
+              <select id="pipelineSpeedSelect" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
+                <option value="2500">Speed: 0.5x</option>
+                <option value="1800" selected>Speed: 1x</option>
+                <option value="900">Speed: 2x</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-track">
+            <div id="pipelineProgressFill" class="progress-fill"></div>
+          </div>
+
+          <!-- Stage Nodes Grid -->
+          <div class="pipeline-canvas-container">
+            <div id="pipelineNodesContainer" class="pipeline-stage-nodes">
+              <!-- Dynamically rendered by pipeline-animator.js -->
+            </div>
+
+            <!-- Live Data Inspector -->
+            <div class="pipeline-inspector">
+              <div class="inspector-box">
+                <h4>Component Inspection</h4>
+                <div style="font-size: 15px; font-weight: 700; color: #fff;" id="inspectorStageName">Web Sources</div>
+                <div style="font-size: 12px; font-family: monospace; color: var(--accent-cyan); margin-top: 4px;" id="inspectorClasses">Jsoup, HTTP Protocol</div>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;" id="inspectorSummary">HTTP endpoints on public web servers containing HTML documents.</p>
+              </div>
+
+              <div class="inspector-box">
+                <h4>Transformation Data</h4>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">INPUT:</div>
+                <div class="inspector-data-box" id="inspectorInput" style="min-height: 40px; margin-bottom: 8px;">https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">OUTPUT:</div>
+                <div class="inspector-data-box" id="inspectorOutput" style="min-height: 40px;">Raw HTTP 200 Response (text/html, 48 KB)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INTERACTIVE 2: BM25 FORMULA & DYNAMIC GRAPH -->
+      <section id="bm25" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Mathematical Foundation</span>
+          <h2 class="section-title">BM25 Ranking & Saturation Simulator</h2>
+          <p class="section-desc">Adjust Term Frequency (TF), k1 saturation, b length normalization, and document length to see how BM25 score behaves compared to linear TF-IDF.</p>
+        </div>
+
+        <div class="bm25-card">
+          <!-- Controls Column -->
+          <div class="bm25-controls-col">
+            <div class="control-slider-group">
+              <div class="slider-label-row">
+                <label for="bm25TfInput">Term Frequency (TF):</label>
+                <span id="bm25TfVal">5</span>
+              </div>
+              <input type="range" id="bm25TfInput" min="1" max="40" step="1" value="5">
+            </div>
+
+            <div class="control-slider-group">
+              <div class="slider-label-row">
+                <label for="bm25K1Input">Saturation Parameter (k1):</label>
+                <span id="bm25K1Val">1.2</span>
+              </div>
+              <input type="range" id="bm25K1Input" min="0.0" max="3.0" step="0.1" value="1.2">
+            </div>
+
+            <div class="control-slider-group">
+              <div class="slider-label-row">
+                <label for="bm25BInput">Length Normalization (b):</label>
+                <span id="bm25BVal">0.75</span>
+              </div>
+              <input type="range" id="bm25BInput" min="0.0" max="1.0" step="0.05" value="0.75">
+            </div>
+
+            <div class="control-slider-group">
+              <div class="slider-label-row">
+                <label for="bm25LenInput">Document Length (|d|):</label>
+                <span id="bm25LenVal">985</span>
+              </div>
+              <input type="range" id="bm25LenInput" min="100" max="2500" step="50" value="985">
+            </div>
+
+            <!-- Calculated Score Display -->
+            <div class="bm25-score-display">
+              <div style="font-size: 12px; font-family: monospace; color: var(--text-muted); text-transform: uppercase;">Calculated BM25 Score</div>
+              <div id="bm25CalculatedScore" class="bm25-score-num">3.3325</div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                Linear TF-IDF Reference: <span id="linearCalculatedScore" style="color: #ef4444; font-weight: 700;">3.7654</span>
+              </div>
+            </div>
+
+            <div class="bm25-formula-box">
+              TF_BM25 = [TF × (k1 + 1)] / [TF + k1 × (1 - b + b × (|d| / L_avg))]<br>
+              Score(t, d) = RSJ_IDF(t) × TF_BM25(t, d)
+            </div>
+          </div>
+
+          <!-- Dynamic Graph Column -->
+          <div class="bm25-graph-col">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; font-family: monospace; color: var(--text-secondary);">Dynamic Canvas Graph</span>
+              <div style="display: flex; gap: 12px; font-size: 11px; font-family: monospace;">
+                <span style="color: var(--accent-cyan);">■ BM25 Curve</span>
+                <span style="color: #ef4444;">-- Linear TF</span>
+                <span style="color: #f59e0b;">-- Asymptote</span>
+              </div>
+            </div>
+            <canvas id="bm25Canvas" width="500" height="280"></canvas>
+            <p style="font-size: 12px; color: var(--text-muted);">
+              Notice how the cyan BM25 curve tapers off horizontally as TF increases, preventing keyword spam from artificially dominating search results.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- INTERACTIVE 3: INVERTED INDEX EXPLORER -->
+      <section id="inverted-index" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Data Structures</span>
+          <h2 class="section-title">Inverted Index & Postings Explorer</h2>
+          <p class="section-desc">Click any vocabulary term to inspect its live postings list, document frequencies, and exact token positions.</p>
+        </div>
+
+        <div class="index-explorer-card">
+          <!-- Terms Cloud -->
+          <div id="termsPillCloud" class="terms-pill-cloud">
+            <!-- Rendered by inverted-index-explorer.js -->
+          </div>
+
+          <!-- Active Term Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+            <div id="indexActiveTerm" style="font-size: 16px; font-weight: 700; color: #fff;">Term: "virtual"</div>
+            <div style="display: flex; gap: 20px;">
+              <span id="indexActiveIdf" style="font-family: monospace; font-size: 12px; color: var(--accent-cyan);">RSJ IDF: 1.1206</span>
+              <span id="indexActiveDf" style="font-family: monospace; font-size: 12px; color: var(--accent-emerald);">Document Frequency (df): 10</span>
+            </div>
+          </div>
+
+          <!-- Postings Table -->
+          <div class="postings-table-container">
+            <table class="postings-table">
+              <thead>
+                <tr>
+                  <th>Doc ID</th>
+                  <th>Document Title & Domain</th>
+                  <th>Term Frequency (TF)</th>
+                  <th>Positional Offset Array [Positions]</th>
+                </tr>
+              </thead>
+              <tbody id="indexPostingsTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- INTERACTIVE 4: CRAWLER EXPLORER & TOP-K EXPLORER -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; margin-bottom: 64px;">
+        
+        <!-- Crawler Explorer -->
+        <section id="crawler" class="pipeline-card">
+          <div class="section-header" style="margin-bottom: 16px;">
+            <span class="section-subtitle">Web Crawling</span>
+            <h3 style="font-size: 20px; font-weight: 800; color: #fff;">BFS Frontier Simulator</h3>
+          </div>
+
+          <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; margin-bottom: 16px;">
+            <div id="crawlerStepTitle" style="font-size: 12px; font-family: monospace; color: var(--accent-cyan); margin-bottom: 6px;">Crawl Lifecycle Step 1 of 7</div>
+            <div id="crawlerStepAction" style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Frontier Dequeue</div>
+            <div id="crawlerStepUrl" style="font-family: monospace; font-size: 11px; color: var(--text-secondary); word-break: break-all; margin-bottom: 12px;">https://www.postgresql.org/docs/current/indexes.html</div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: monospace; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 8px;">
+              <span id="crawlerStepDepth">Depth: 0</span>
+              <span id="crawlerStepQueue">Pending Queue: 3 URLs</span>
+            </div>
+          </div>
+
+          <div id="crawlerStepStatus" style="font-size: 12px; color: var(--text-secondary); min-height: 40px; margin-bottom: 16px;">
+            Dequeued task from lock-free ConcurrentLinkedQueue in BFS order.
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button id="crawlerPrevBtn" class="btn btn-secondary">◀ Prev</button>
+            <button id="crawlerNextBtn" class="btn btn-primary">Next Step ▶</button>
+            <button id="crawlerResetBtn" class="btn btn-secondary">↺ Reset</button>
+          </div>
+        </section>
+
+        <!-- Top-K Min-Heap Explorer -->
+        <section id="topk" class="pipeline-card">
+          <div class="section-header" style="margin-bottom: 16px;">
+            <span class="section-subtitle">Priority Queue</span>
+            <h3 style="font-size: 20px; font-weight: 800; color: #fff;">Top-K Min-Heap Selection</h3>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;" id="topkExplainText">
+            Bounded Min-Heap of size K=3 maintains the top 3 highest scores seen so far.
+          </div>
+
+          <!-- Active Heap Container -->
+          <div id="topkHeapContainer" style="margin-bottom: 14px; min-height: 120px;">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Candidate Stream List -->
+          <div style="font-size: 11px; font-family: monospace; color: var(--text-muted); margin-bottom: 6px;">CANDIDATE STREAM:</div>
+          <div id="topkCandidateList" style="max-height: 120px; overflow-y: auto; margin-bottom: 16px;">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button id="topkNextBtn" class="btn btn-primary">Process Next Candidate ▶</button>
+            <button id="topkResetBtn" class="btn btn-secondary">↺ Reset</button>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- INTERACTIVE 5: ARCHITECTURE INSPECTOR -->
+      <section id="architecture" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Component Architecture</span>
+          <h2 class="section-title">System Architecture Inspector</h2>
+          <p class="section-desc">Click any subsystem card below to inspect its responsibilities, input/output contracts, design patterns, and core Java classes.</p>
+        </div>
+
+        <div class="arch-grid">
+          <div class="arch-card" data-subsystem="crawler">
+            <div class="arch-icon">🌐</div>
+            <h3>Web Crawler Subsystem</h3>
+            <p>Loom Virtual Threads, RFC 9309 robots parser, domain politeness throttle, SHA-256 deduplication.</p>
+          </div>
+
+          <div class="arch-card" data-subsystem="indexer">
+            <div class="arch-icon">⚙</div>
+            <h3>Linguistic Indexer</h3>
+            <p>Unicode NFD normalizer, 130+ stop-words, 5-step Porter stemmer, dual-tier RAM/DB postings.</p>
+          </div>
+
+          <div class="arch-card" data-subsystem="retrieval">
+            <div class="arch-icon">🔍</div>
+            <h3>Boolean & Phrase Engine</h3>
+            <p>Recursive-descent AST parser, linear two-pointer merge, positional exact phrase search.</p>
+          </div>
+
+          <div class="arch-card active" data-subsystem="ranking">
+            <div class="arch-icon">★</div>
+            <h3>BM25 Relevance Engine</h3>
+            <p>Robertson-Spärck Jones IDF, saturation curve, length penalty, Min-Heap Top-K selection.</p>
+          </div>
+
+          <div class="arch-card" data-subsystem="api">
+            <div class="arch-icon">📡</div>
+            <h3>REST API & Telemetry</h3>
+            <p>SearchController with explainability, IndexController, CrawlerController, Spring Actuator.</p>
+          </div>
+        </div>
+
+        <!-- Architecture Detail Modal -->
+        <div id="archDetailModal" class="arch-modal visible">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 id="archModalTitle" style="font-size: 20px; font-weight: 800; color: #fff;">BM25 Scoring & Relevance Engine</h3>
+            <span id="archModalPackage" style="font-family: monospace; font-size: 12px; color: var(--accent-cyan);">Package: com.searchforge.ranking</span>
+          </div>
+          <p id="archModalResponsibility" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+            Calculates Robertson-Spärck Jones IDF, applies BM25 saturation, and ranks candidates via bounded Min-Heap.
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
+            <div>
+              <h4 style="font-size: 11px; font-family: monospace; color: var(--text-muted); text-transform: uppercase;">Core Java Classes</h4>
+              <ul id="archModalClassesList" style="list-style: none; margin-top: 6px;">
+                <!-- Populated dynamically -->
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-size: 11px; font-family: monospace; color: var(--text-muted); text-transform: uppercase;">Design Patterns & Invariants</h4>
+              <p id="archModalPatterns" style="font-size: 13px; color: var(--accent-indigo); margin-top: 6px; font-weight: 600;">Strategy Pattern, Min-Heap Bounded Queue, Mathematical Modelling</p>
+              
+              <h4 style="font-size: 11px; font-family: monospace; color: var(--text-muted); text-transform: uppercase; margin-top: 14px;">Data Flow</h4>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                <strong>Input:</strong> <span id="archModalInputs">Candidate document IDs, term frequencies, collection stats</span><br>
+                <strong>Output:</strong> <span id="archModalOutputs">RankedSearchResult list sorted descending by score in sub-millisecond latency</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REST API REFERENCE -->
+      <section id="api" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">API Documentation</span>
+          <h2 class="section-title">Verified REST API Reference</h2>
+          <p class="section-desc">Production endpoints exposed on port 8080.</p>
+        </div>
+
+        <div class="pipeline-card">
+          <table class="postings-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Endpoint Path</th>
+                <th>Purpose</th>
+                <th>Query Parameters</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/search</td>
+                <td>Free-text BM25 ranked search (Mode A)</td>
+                <td><code>q</code>, <code>limit=10</code>, <code>explain=true</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/search/ranked-boolean</td>
+                <td>Ranked Boolean query AST evaluation (Mode C)</td>
+                <td><code>q</code>, <code>limit=10</code>, <code>explain=true</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/search/filtered</td>
+                <td>BM25 search with hard Boolean filter (Mode B)</td>
+                <td><code>q</code>, <code>filter</code>, <code>limit=10</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-emerald); font-weight: 700;">POST</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/index/build</td>
+                <td>Batch index unindexed crawled pages</td>
+                <td><code>batchSize=100</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-emerald); font-weight: 700;">POST</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/index/rebuild</td>
+                <td>Full index purge and rebuild from scratch</td>
+                <td><em>none</em></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/index/stats</td>
+                <td>Corpus metrics (N, V, postings, L_avg)</td>
+                <td><em>none</em></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-emerald); font-weight: 700;">POST</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/crawler/start</td>
+                <td>Start background crawl in Virtual Thread</td>
+                <td>JSON: <code>{"seedUrls": [...]}</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/crawler/status</td>
+                <td>Crawl telemetry (pages, queue, runtime)</td>
+                <td><em>none</em></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- GETTING STARTED -->
+      <section id="quickstart" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Local Execution</span>
+          <h2 class="section-title">Quickstart Guide</h2>
+          <p class="section-desc">Launch the search engine locally in under 60 seconds.</p>
+        </div>
+
+        <div class="pipeline-card" style="background-color: var(--bg-secondary);">
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">Option A: Zero-Docker Instant Dev Runner (Recommended)</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Uses an in-memory PostgreSQL-compatible H2 database with 6 sample technical documents auto-seeded on startup.</p>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px;"><code style="color: #38bdf8;">cd backend
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"</code></pre>
+
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option B: Persistent PostgreSQL 16 Docker Mode</h3>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px;"><code style="color: #38bdf8;"># 1. Start PostgreSQL 16 Container
+docker compose up -d
+
+# 2. Run backend
+cd backend
+.\mvnw.cmd spring-boot:run</code></pre>
+
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option C: Run All 185 Hermetic Tests</h3>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;">cd backend
+.\mvnw.cmd test</code></pre>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="scripts/pipeline-animator.js"></script>
+  <script src="scripts/bm25-calculator.js"></script>
+  <script src="scripts/inverted-index-explorer.js"></script>
+  <script src="scripts/crawler-explorer.js"></script>
+  <script src="scripts/topk-explorer.js"></script>
+  <script src="scripts/architecture-explorer.js"></script>
+  <script src="scripts/app.js"></script>
+</body>
+</html>
