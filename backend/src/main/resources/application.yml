@@ -54,3 +54,9 @@ crawler:
   connect-timeout-ms: 3000
   read-timeout-ms: 5000
   concurrency: 4
+
+ranking:
+  bm25:
+    k1: 1.2
+    b: 0.75
+

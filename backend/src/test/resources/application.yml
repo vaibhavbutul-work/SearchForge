@@ -29,3 +29,9 @@ crawler:
   connect-timeout-ms: 1000
   read-timeout-ms: 1000
   concurrency: 2
+
+ranking:
+  bm25:
+    k1: 1.2
+    b: 0.75
+
