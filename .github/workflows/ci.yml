@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-test:
@@ -31,8 +31,8 @@ jobs:
 
       - name: Execute Full Test Suite (185 Tests)
         working-directory: backend
-        run: ./mvnw test --batch-mode
+        run: mvn test --batch-mode --no-transfer-progress || ./mvnw test --batch-mode --no-transfer-progress
 
       - name: Package Executable JAR
         working-directory: backend
-        run: ./mvnw package -DskipTests --batch-mode
+        run: mvn package -DskipTests --batch-mode --no-transfer-progress || ./mvnw package -DskipTests --batch-mode --no-transfer-progress
