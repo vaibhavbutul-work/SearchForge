@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="docs-site/index.html"><strong>🌐 Launch Interactive Documentation Website</strong></a> •
+  <a href="https://vaibhavbutul-work.github.io/SearchForge/"><strong>🌐 Launch Live Interactive Documentation Website</strong></a> •
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
   <a href="#-okapi-bm25-relevance-engine"><strong>BM25 Math</strong></a> •
@@ -39,11 +39,11 @@
 
 ## 🌐 Interactive Documentation & Architecture Website
 
-SearchForge includes a dedicated, zero-dependency interactive documentation web portal located at [`docs-site/`](docs-site/index.html).
+SearchForge includes a dedicated, zero-dependency interactive documentation web portal live at [vaibhavbutul-work.github.io/SearchForge](https://vaibhavbutul-work.github.io/SearchForge/).
 
 <p align="center">
-  <a href="docs-site/index.html">
-    <img src="https://img.shields.io/badge/Open_Interactive_Website-docs--site%2Findex.html-00E5FF?style=for-the-badge&logo=html5&logoColor=black" alt="Open Website">
+  <a href="https://vaibhavbutul-work.github.io/SearchForge/">
+    <img src="https://img.shields.io/badge/Live_Interactive_Website-Visit_Portal-00E5FF?style=for-the-badge&logo=html5&logoColor=black" alt="Open Live Website">
   </a>
 </p>
 
