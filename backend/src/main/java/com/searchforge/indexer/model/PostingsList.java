@@ -84,6 +84,22 @@ public class PostingsList implements Iterable<Posting> {
         return Collections.binarySearch(postings, new Posting(documentId, 1, List.of())) >= 0;
     }
 
+    /**
+     * Removes a posting for the specified documentId if present.
+     *
+     * @param documentId Document ID to remove.
+     * @return true if a posting was removed, false otherwise.
+     */
+    public synchronized boolean removePosting(long documentId) {
+        int index = Collections.binarySearch(postings, new Posting(documentId, 1, List.of()));
+        if (index >= 0) {
+            Posting removed = postings.remove(index);
+            totalTermFrequency -= removed.termFrequency();
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public synchronized Iterator<Posting> iterator() {
         return List.copyOf(postings).iterator();

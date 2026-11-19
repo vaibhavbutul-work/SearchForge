@@ -1,7 +1,9 @@
 package com.searchforge.crawler.repository;
 
 import com.searchforge.crawler.model.CrawledDocument;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -37,4 +39,22 @@ public interface CrawledDocumentRepository extends JpaRepository<CrawledDocument
      * Retrieves all crawled documents for a given domain.
      */
     List<CrawledDocument> findByDomain(String domain);
+
+    /**
+     * Finds all crawled documents that have not yet been indexed.
+     */
+    @Query("SELECT d FROM CrawledDocument d WHERE d.id NOT IN (SELECT m.documentId FROM IndexedDocumentMetadata m)")
+    List<CrawledDocument> findUnindexedDocuments();
+
+    /**
+     * Finds a paginated batch of crawled documents that have not yet been indexed.
+     */
+    @Query("SELECT d FROM CrawledDocument d WHERE d.id NOT IN (SELECT m.documentId FROM IndexedDocumentMetadata m)")
+    List<CrawledDocument> findUnindexedDocuments(Pageable pageable);
+
+    /**
+     * Counts how many crawled documents are currently unindexed.
+     */
+    @Query("SELECT COUNT(d) FROM CrawledDocument d WHERE d.id NOT IN (SELECT m.documentId FROM IndexedDocumentMetadata m)")
+    long countUnindexedDocuments();
 }

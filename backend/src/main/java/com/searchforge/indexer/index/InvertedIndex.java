@@ -58,4 +58,21 @@ public interface InvertedIndex {
      * Purges all terms, postings, and corpus metrics.
      */
     void clear();
+
+    /**
+     * Removes a document's postings and metadata from the index.
+     *
+     * @param documentId Document ID to remove.
+     */
+    void removeDocument(long documentId);
+
+    /**
+     * Directly inserts pre-aggregated term positions for a document without re-tokenizing.
+     * Useful for cold startup warmup from persistent storage.
+     *
+     * @param documentId    Document ID.
+     * @param docLength     Total token count in the document.
+     * @param termPositions Map of term string to list of positions.
+     */
+    void addDocumentPostings(long documentId, int docLength, Map<String, List<Integer>> termPositions);
 }

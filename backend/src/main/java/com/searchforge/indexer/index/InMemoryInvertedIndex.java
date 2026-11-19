@@ -101,4 +101,42 @@ public class InMemoryInvertedIndex implements InvertedIndex {
         docLengths.clear();
         totalTokens.set(0);
     }
+
+    @Override
+    public void removeDocument(long documentId) {
+        Integer length = docLengths.remove(documentId);
+        if (length != null) {
+            totalTokens.addAndGet(-length);
+        }
+
+        dictionary.forEach((term, postingsList) -> {
+            postingsList.removePosting(documentId);
+            if (postingsList.size() == 0) {
+                dictionary.remove(term, postingsList);
+            }
+        });
+    }
+
+    @Override
+    public void addDocumentPostings(long documentId, int docLength, Map<String, List<Integer>> termPositions) {
+        Integer previousLength = docLengths.put(documentId, docLength);
+        if (previousLength != null) {
+            totalTokens.addAndGet(docLength - previousLength);
+        } else {
+            totalTokens.addAndGet(docLength);
+        }
+
+        if (termPositions == null || termPositions.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, List<Integer>> entry : termPositions.entrySet()) {
+            String term = entry.getKey();
+            List<Integer> positions = entry.getValue();
+            if (positions != null && !positions.isEmpty()) {
+                PostingsList postingsList = dictionary.computeIfAbsent(term, k -> new PostingsList());
+                postingsList.addPosting(new Posting(documentId, positions.size(), positions));
+            }
+        }
+    }
 }
