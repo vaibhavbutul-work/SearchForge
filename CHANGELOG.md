@@ -6,6 +6,19 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] - Phase 5: Query Intelligence & Search Experience (2026-11-20)
+
+### Added
+- **Weighted Trie Autocomplete Engine:** Custom thread-safe prefix tree backed by `ConcurrentHashMap` with lock-free atomic references (`AtomicReference<AutocompleteTrie>`), corpus popularity scoring ($\text{Score}(t) = \ln(1 + \text{ctf}) \times \sqrt{\text{df}}$), and bounded Min-Heap top-$K$ prefix traversal ($\mathcal{O}(L + M \log K)$). REST endpoint: `/api/v1/search/autocomplete`.
+- **Damerau-Levenshtein Spelling Correction:** Optimal String Alignment (OSA) dynamic programming evaluating insertions, deletions, substitutions, and adjacent transpositions. Length-bucket candidate pruning ($[L-2, L+2]$) and Noisy Channel model scoring ($P(C \mid T) \propto \text{ErrorWeight}(d) \times (\ln(1 + \text{ctf}) \times \sqrt{\text{df}} + 1.0)$). REST endpoint: `/api/v1/search/suggest`.
+- **Dynamic Sliding-Window Snippets:** Word-boundary window snapping (160 char target), multi-term cluster density scoring ($100 \cdot Q_{\text{unique}} + 10 \cdot Q_{\text{total}} + \frac{100}{1 + \text{Span}}$), and anti-XSS HTML escaping (`HtmlSanitizer`) with safe `<mark>` tags.
+- **Directional Synonym Expansion:** Directional synonym graphs (`ONE_WAY` and `BIDIRECTIONAL`) with cycle suppression, stop-word elimination, and query-intent safety bypass for quoted phrases and Boolean operators.
+- **Enriched Search Integration:** Enriched `SearchController` returning `didYouMean` suggestions and `highlightedSnippet`s alongside BM25 rankings, with discounted synonym term weighting ($\delta = 0.5$) in `DefaultRankedRetrievalEngine`.
+- **Latency Benchmarks & IR Evaluation Suite:** Microsecond latency percentile benchmark suite (`QueryIntelligenceBenchmarkTest`) and IR evaluation suite (`QueryIntelligenceRelevanceEvaluationTest`) confirming sub-90µs query intelligence overhead and 100% precision/recall.
+- **Automated Test Suite Expansion:** 273 hermetic tests passing with 0 failures (88 new tests across Phase 5).
+
+---
+
 ## [1.0.0] - Phase 4: Scoring, Ranking & Relevance Engine (2026-11-19)
 
 ### Added

@@ -16,6 +16,7 @@
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
   <a href="#-okapi-bm25-relevance-engine"><strong>BM25 Math</strong></a> •
+  <a href="#-query-intelligence--search-experience-phase-5"><strong>Query Intelligence</strong></a> •
   <a href="#-verified-real-world-experiment"><strong>Real-World Benchmark</strong></a> •
   <a href="#-rest-api-reference"><strong>API Reference</strong></a> •
   <a href="#-quickstart-guide"><strong>Quickstart</strong></a>
@@ -27,7 +28,7 @@
 > 
 > Rather than treating search as a black-box library dependency (like Lucene, Solr, or Elasticsearch), **SearchForge** implements the entire algorithmic and systems stack of an industrial search engine **from first principles in modern Java 21 and Spring Boot**.
 > 
-> From non-blocking polite web crawling on Project Loom virtual threads to morphological Porter stemming, lock-free dual-tier inverted indexing, recursive-descent Boolean AST resolution, Robertson-Spärck Jones Okapi BM25 probabilistic scoring, positional phrase boosting, and automated Information Retrieval (IR) evaluation suites (NDCG, MRR, P@K, R@K).
+> From non-blocking polite web crawling on Project Loom virtual threads to morphological Porter stemming, lock-free dual-tier inverted indexing, recursive-descent Boolean AST resolution, Robertson-Spärck Jones Okapi BM25 probabilistic scoring, positional phrase boosting, real-time Weighted Trie prefix autocomplete, Damerau-Levenshtein spelling error correction with noisy channel scoring, dynamic sliding-window snippet extraction with anti-XSS highlighting, directional synonym query expansion, and automated Information Retrieval (IR) evaluation suites (NDCG, MRR, P@K, R@K).
 
 ---
 
@@ -54,6 +55,7 @@ SearchForge includes a dedicated, zero-dependency interactive documentation web 
 4. **BFS Web Crawler Simulator:** Demonstrates frontier FIFO dequeuing, host normalization, RFC 9309 `robots.txt` path evaluation, per-domain concurrency locks, and politeness delay timing.
 5. **Top-K Bounded Priority Queue Visualizer:** Shows the bounded min-heap maintaining the top-$K$ candidates in $\mathcal{O}(C \log K)$ runtime without full collection sorting.
 6. **Component Architecture Inspector:** Interactive subsystem diagram revealing responsibilities, input/output data contracts, and production Java classes upon click.
+7. **Query Intelligence & Suggestion Inspector:** Demonstrates real-time Trie prefix completion, Damerau-Levenshtein OSA edit-distance alignment, sliding-window snippet extraction with anti-XSS protection, and directional synonym expansion graphs.
 
 ```bash
 # Run local documentation site with Python
@@ -82,11 +84,14 @@ SearchForge operates across two interconnected lifecycles:
 6. **Index Construction:** Postings lists record `(docId, termFrequency, [positions])`. The in-memory tier (`InMemoryInvertedIndex`) updates concurrent lookup maps, and the persistence tier writes relational postings to PostgreSQL.
 
 ### Retrieval & Ranking Lifecycle
-1. **Query Lexing & Parsing:** Free-text queries are tokenized and stemmed identically to documents. Boolean queries are tokenized by `BooleanQueryLexer` and parsed into an AST by `BooleanQueryParser`.
-2. **Candidate Generation (TAAT):** `DefaultRankedRetrievalEngine` queries the index using Term-At-A-Time postings accumulation, gathering only documents matching at least one non-stopword query term.
-3. **BM25 Scoring:** Documents are scored using the Okapi BM25 probabilistic model incorporating Robertson-Spärck Jones non-negative IDF, sublinear term frequency saturation, and document length normalization.
-4. **Positional Phrase Boosting:** Documents containing consecutive query terms at adjacent offsets ($pos_{i+1} - pos_i = 1$) receive additive score boosts.
-5. **Top-K Priority Queue:** Candidate documents are streamed through a bounded min-heap of size $K$, yielding the final ranked result set in $\mathcal{O}(C \log K)$ time.
+1. **Query Pre-Processing & Suggestions:** Free-text queries pass through `SpellingCorrectionService` (Damerau-Levenshtein OSA distance + Noisy Channel model) to generate `didYouMean` suggestions. Keystroke prefixes trigger `TrieAutocompleteEngine` for real-time suggestions.
+2. **Directional Synonym Expansion:** Queries are normalized and expanded by `SynonymExpansionService` using directional synonym graphs (`ONE_WAY` and `BIDIRECTIONAL`), while quoted phrases and Boolean operators (`AND`, `OR`, `NOT`) bypass expansion to protect AST semantics.
+3. **Query Lexing & Parsing:** Free-text query terms and expanded synonyms are tokenized and stemmed identically to indexed documents. Boolean queries are tokenized by `BooleanQueryLexer` and parsed into an AST by `BooleanQueryParser`.
+4. **Candidate Generation (TAAT):** `DefaultRankedRetrievalEngine` queries the index using Term-At-A-Time postings accumulation, gathering documents matching at least one non-stopword query or synonym term.
+5. **Weighted BM25 Scoring:** Documents are scored using the Okapi BM25 probabilistic model incorporating Robertson-Spärck Jones non-negative IDF, sublinear term frequency saturation ($k_1=1.2$), document length normalization ($b=0.75$), and a tunable discount factor ($\delta = 0.5$) for expanded synonym terms.
+6. **Positional Phrase Boosting:** Documents containing consecutive query terms at adjacent offsets ($pos_{i+1} - pos_i = 1$) receive additive score boosts.
+7. **Top-K Priority Queue:** Candidate documents are streamed through a bounded min-heap of size $K$, yielding the final top-$K$ ranked result set in $\mathcal{O}(C \log K)$ runtime.
+8. **Dynamic Snippet Generation & Highlighting:** Matched documents are passed to `SnippetGeneratorService` to extract the highest-density excerpt window snapped to word boundaries, escaping HTML entities via `HtmlSanitizer` and wrapping query and synonym terms in `<mark>` tags.
 
 ---
 
@@ -122,8 +127,18 @@ flowchart TD
         RelationalStore --> MetaTable["indexed_document_metadata (|d|, timestamp)"]
     end
 
-    subgraph QueryRanking["4. Relevance & Ranking Engine"]
-        UserQuery["Client Query"] --> QueryRoute{"Query Mode"}
+    subgraph QueryIntelligence["4. Query Intelligence Subsystem"]
+        Keystroke["Client Keystroke / Prefix"] --> AutoTrie["AutocompleteTrie (Weighted Prefix Tree)"]
+        AutoTrie --> AutoResp["Top-K Autocomplete Response (1.3 µs)"]
+        RawQuery["Client Search Query"] --> SpellCheck["SpellingCorrectionService (Damerau-Levenshtein OSA)"]
+        SpellCheck --> NoisyChannel["Noisy Channel Scorer + Length Buckets"]
+        NoisyChannel --> DidYouMean["'didYouMean' Suggestion (71.5 µs)"]
+        RawQuery --> SynExp["SynonymExpansionService (Directional Graph)"]
+        SynExp --> NormQuery["Normalized & Expanded Query (δ = 0.5)"]
+    end
+
+    subgraph QueryRanking["5. Relevance & Ranking Engine"]
+        NormQuery --> QueryRoute{"Query Mode"}
         QueryRoute -->|Free-Text BM25| TAAT["DefaultRankedRetrievalEngine (TAAT Union)"]
         QueryRoute -->|Ranked Boolean| BoolEngine["DefaultRankedBooleanQueryEngine"]
         QueryRoute -->|Filtered Search| FilterEngine["Boolean Filter + Ranked Union"]
@@ -137,8 +152,10 @@ flowchart TD
         Scorer --> PhraseBoost["PositionalIndexSearcher (Exact Phrase Boost)"]
         
         Scorer --> TopK["Bounded Min-Heap Priority Queue (Top-K)"]
-        TopK --> Explainer["Explainability Engine (Score Deconstruction)"]
-        Explainer --> SearchResult["Ranked Search Response (JSON)"]
+        TopK --> SnippetGen["SnippetGeneratorService (Word-Boundary Window)"]
+        SnippetGen --> Sanitizer["HtmlSanitizer (Anti-XSS + Mark Tags)"]
+        Sanitizer --> SearchResult["Enriched Ranked Response (JSON)"]
+        DidYouMean -.-> SearchResult
     end
 ```
 
@@ -178,6 +195,24 @@ A complete, thread-safe implementation of Martin Porter's 1980 morphological red
   - `IndexedTerm`: Dictionary table with unique index on `term`, tracking $df$ and $ctf$.
   - `TermPosting`: Relational postings with compound unique constraint `(term_id, document_id)` and portable text positions.
   - `IndexedDocumentMetadata`: Tracks document lengths and indexing timestamps.
+
+### 5. Query Intelligence & User Experience Subsystem (`com.searchforge.query`)
+* **Weighted Trie Autocomplete (`com.searchforge.query.autocomplete`):**
+  - Lock-free atomic reference prefix tree (`AtomicReference<AutocompleteTrie>`) dynamically synchronized with index updates.
+  - Scores terms by combining corpus term frequency and document frequency: $\text{Score}(t) = \ln(1 + \text{ctf}) \times \sqrt{\text{df}}$.
+  - Extracts the top-$K$ candidates via bounded min-heap in $\mathcal{O}(L + M \log K)$ runtime without sorting full subtrees.
+* **Damerau-Levenshtein Spelling Correction (`com.searchforge.query.spelling`):**
+  - Optimal String Alignment (OSA) dynamic programming evaluating insertions, deletions, substitutions, and adjacent transpositions.
+  - Length-bucket index partitions the vocabulary to evaluate only terms within $\pm 2$ characters, pruning over 90% of candidate comparisons.
+  - Noisy Channel scoring weights edit distance likelihood against indexed popularity: $P(C \mid T) \propto \text{ErrorWeight}(d) \times (\ln(1 + \text{ctf}) \times \sqrt{\text{df}} + 1.0)$.
+* **Dynamic Sliding-Window Snippets (`com.searchforge.query.snippet`):**
+  - Scans document text using word-boundary snapping to preserve linguistic integrity (160 character target window).
+  - Density relevance scoring optimizes term clusters: $\text{Score} = 100 \cdot Q_{\text{unique}} + 10 \cdot Q_{\text{total}} + \frac{100}{1 + \text{Span}}$.
+  - Built-in `HtmlSanitizer` escapes raw HTML entities (`&`, `<`, `>`, `"`, `'`) before wrapping matched terms in `<mark>` tags.
+* **Directional Synonym Expansion (`com.searchforge.query.synonym`):**
+  - Configurable directional mappings (`ONE_WAY` vs. `BIDIRECTIONAL`) with loop prevention and self-mapping elimination.
+  - Applies a discounted multiplier ($\delta = 0.5$) during BM25 score accumulation.
+  - Strictly preserves Boolean operators (`AND`, `OR`, `NOT`) and quoted phrases without expansion to maintain AST semantics.
 
 ---
 
@@ -267,6 +302,12 @@ Evaluated against multi-intent benchmark queries with curated binary and graded 
 | **AND Intersection** | Two-Pointer Linear Merge | $\mathcal{O}(L_1 + L_2)$ | $\mathcal{O}(\min(L_1, L_2))$ |
 | **OR Union** | Two-Pointer Linear Merge | $\mathcal{O}(L_1 + L_2)$ | $\mathcal{O}(L_1 + L_2)$ |
 | **NOT Difference** | Two-Pointer Linear Difference | $\mathcal{O}(L_1 + L_2)$ | $\mathcal{O}(L_1)$ |
+| **Trie Prefix Autocomplete** | Bounded Min-Heap Traversal | $\mathcal{O}(L + M \log K)$ | $\mathcal{O}(V \cdot \bar{L})$ |
+| **Spelling OSA Distance** | Damerau-Levenshtein DP | $\mathcal{O}(L_1 \cdot L_2)$ | $\mathcal{O}(L_1 \cdot L_2)$ |
+| **Length-Bucket Candidate Pruning** | Hash-Indexed Bucket Lookup | $\mathcal{O}(1)$ | $\mathcal{O}(V)$ |
+| **Sliding-Window Snippets** | Word-Boundary Density Scan | $\mathcal{O}(W \cdot |Q|)$ | $\mathcal{O}(W)$ |
+| **Anti-XSS Sanitization** | Single-Pass Entity Escaping | $\mathcal{O}(N_{\text{chars}})$ | $\mathcal{O}(N_{\text{chars}})$ |
+| **Synonym Expansion** | Directional Graph Traversal | $\mathcal{O}(|Q| \cdot S_{\text{max}})$ | $\mathcal{O}(|Q| \cdot S_{\text{max}})$ |
 
 ---
 
@@ -405,7 +446,7 @@ SearchForge includes an in-memory H2 development profile with pre-configured dom
 ```bash
 cd backend
 
-# Run all 185 tests in-memory
+# Run all 273 tests in-memory
 ./mvnw test
 
 # Launch the server with the dev profile (H2 in-memory DB)
@@ -439,11 +480,13 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs-site/`](docs-site/index.html)** | **Interactive HTML documentation website with animated search pipeline and BM25 graph** |
 | **[`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)** | Subsystem architecture, data contracts, and class-level interactions |
 | **[`docs/architecture/DATA_FLOW.md`](docs/architecture/DATA_FLOW.md)** | End-to-end data lifecycle sequences for crawling, indexing, and retrieval |
-| **[`docs/api/SEARCH_API.md`](docs/api/SEARCH_API.md)** | Complete REST API specification for free-text BM25, Boolean, and filtered search |
+| **[`docs/api/SEARCH_API.md`](docs/api/SEARCH_API.md)** | Complete REST API specification for BM25, autocomplete, spelling suggestions, Boolean, and filtered search |
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, and Phase 4 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 |
+| **[`docs/phases/PHASE_5_QUERY_INTELLIGENCE.md`](docs/phases/PHASE_5_QUERY_INTELLIGENCE.md)** | Complete guide to Trie autocomplete, spelling correction, sliding snippets, and synonyms |
+| **[`docs/PHASE_5_COMPLETE_GUIDE.md`](docs/PHASE_5_COMPLETE_GUIDE.md)** | Comprehensive index and technical reference for Phase 5 Query Intelligence |
 
 ---
 
@@ -452,7 +495,7 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 - **[CONTRIBUTING.md](CONTRIBUTING.md):** Guidelines for code style, branching, pull requests, and test expectations.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Contributor standards and inclusive community pledges.
 - **[SECURITY.md](SECURITY.md):** Vulnerability reporting and disclosure protocols.
-- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1, Phase 2, Phase 3, and Phase 4.
+- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5.
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml):** Automated GitHub Actions CI workflow running Java 21 test suites on every pull request.
 - **[.github/workflows/pages.yml](.github/workflows/pages.yml):** Automated GitHub Pages deployment workflow for the interactive `docs-site/`.
 
