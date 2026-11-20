@@ -1,5 +1,7 @@
 package com.searchforge.ranking.retrieval;
 
+import com.searchforge.query.synonym.model.ExpandedQuery;
+
 import java.util.List;
 
 /**
@@ -27,4 +29,15 @@ public interface RankedRetrievalEngine {
      * @return Ordered list of top matching {@link RankedSearchResult}s sorted descending by score.
      */
     List<RankedSearchResult> search(String query, int limit);
+
+    /**
+     * Executes ranked retrieval using an expanded query with weighted synonym terms.
+     *
+     * @param expandedQuery Expanded query containing original and synonym terms.
+     * @param limit         Maximum number of ranked results to return (limit >= 1).
+     * @return Ordered list of top matching {@link RankedSearchResult}s.
+     */
+    default List<RankedSearchResult> search(ExpandedQuery expandedQuery, int limit) {
+        return search(expandedQuery != null ? expandedQuery.originalQuery() : "", limit);
+    }
 }

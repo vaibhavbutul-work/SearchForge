@@ -5,6 +5,12 @@ import com.searchforge.crawler.repository.CrawledDocumentRepository;
 import com.searchforge.indexer.index.InvertedIndex;
 import com.searchforge.indexer.model.Posting;
 import com.searchforge.indexer.model.PostingsList;
+import com.searchforge.query.snippet.model.HighlightedSnippet;
+import com.searchforge.query.snippet.service.SnippetGeneratorService;
+import com.searchforge.query.spelling.dto.QuerySuggestionResponse;
+import com.searchforge.query.spelling.service.SpellingCorrectionService;
+import com.searchforge.query.synonym.model.ExpandedQuery;
+import com.searchforge.query.synonym.service.SynonymExpansionService;
 import com.searchforge.ranking.dto.RankedSearchHitResponse;
 import com.searchforge.ranking.dto.RankedSearchResponse;
 import com.searchforge.ranking.dto.TermExplanation;
@@ -13,17 +19,23 @@ import com.searchforge.ranking.retrieval.RankedRetrievalEngine;
 import com.searchforge.ranking.retrieval.RankedSearchResult;
 import com.searchforge.ranking.scorer.Bm25TermScorer;
 import com.searchforge.ranking.weight.IdfCalculator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * Production REST controller exposing BM25 ranked search, ranked Boolean retrieval,
- * and filtered relevance search.
+ * and filtered relevance search enriched with query intelligence:
+ * 1. Automatic spelling error detection and didYouMean suggestions.
+ * 2. Query expansion via synonym dictionaries.
+ * 3. Dynamic relevant snippet generation with XSS-safe <mark> highlighting.
  */
 @RestController
 @RequestMapping("/api/v1/search")
@@ -35,6 +47,9 @@ public class SearchController {
     private final InvertedIndex invertedIndex;
     private final IdfCalculator idfCalculator;
     private final Bm25TermScorer termScorer;
+    private final SpellingCorrectionService spellingCorrectionService;
+    private final SynonymExpansionService synonymExpansionService;
+    private final SnippetGeneratorService snippetGeneratorService;
 
     public SearchController(RankedRetrievalEngine rankedRetrievalEngine,
                             RankedBooleanQueryEngine rankedBooleanQueryEngine,
@@ -42,17 +57,35 @@ public class SearchController {
                             InvertedIndex invertedIndex,
                             @Qualifier("bm25IdfCalculator") IdfCalculator idfCalculator,
                             Bm25TermScorer termScorer) {
+        this(rankedRetrievalEngine, rankedBooleanQueryEngine, crawledDocumentRepository,
+                invertedIndex, idfCalculator, termScorer, null, null, null);
+    }
+
+    @Autowired
+    public SearchController(RankedRetrievalEngine rankedRetrievalEngine,
+                            RankedBooleanQueryEngine rankedBooleanQueryEngine,
+                            CrawledDocumentRepository crawledDocumentRepository,
+                            InvertedIndex invertedIndex,
+                            @Qualifier("bm25IdfCalculator") IdfCalculator idfCalculator,
+                            Bm25TermScorer termScorer,
+                            @Autowired(required = false) SpellingCorrectionService spellingCorrectionService,
+                            @Autowired(required = false) SynonymExpansionService synonymExpansionService,
+                            @Autowired(required = false) SnippetGeneratorService snippetGeneratorService) {
         this.rankedRetrievalEngine = Objects.requireNonNull(rankedRetrievalEngine, "RankedRetrievalEngine cannot be null");
         this.rankedBooleanQueryEngine = Objects.requireNonNull(rankedBooleanQueryEngine, "RankedBooleanQueryEngine cannot be null");
         this.crawledDocumentRepository = Objects.requireNonNull(crawledDocumentRepository, "CrawledDocumentRepository cannot be null");
         this.invertedIndex = Objects.requireNonNull(invertedIndex, "InvertedIndex cannot be null");
         this.idfCalculator = Objects.requireNonNull(idfCalculator, "IdfCalculator cannot be null");
         this.termScorer = Objects.requireNonNull(termScorer, "Bm25TermScorer cannot be null");
+        this.spellingCorrectionService = spellingCorrectionService;
+        this.synonymExpansionService = synonymExpansionService;
+        this.snippetGeneratorService = snippetGeneratorService;
     }
 
     /**
      * GET /api/v1/search?q={query}&limit={limit}&explain={boolean}
-     * Executes free-text BM25 ranked retrieval (Mode A).
+     * Executes free-text BM25 ranked retrieval (Mode A) enriched with spelling suggestions,
+     * synonym expansion, and dynamic snippet generation with highlighting.
      */
     @GetMapping
     public ResponseEntity<?> searchFreeText(
@@ -66,10 +99,25 @@ public class SearchController {
         }
 
         long startNs = System.nanoTime();
-        List<RankedSearchResult> rankedResults = rankedRetrievalEngine.search(query.trim(), limit);
+        String trimmedQuery = query.trim();
+
+        // 1. Detect potential spelling errors and suggest didYouMean query
+        String didYouMean = null;
+        if (spellingCorrectionService != null && !trimmedQuery.contains("\"")) {
+            QuerySuggestionResponse suggestion = spellingCorrectionService.suggest(trimmedQuery);
+            if (suggestion != null && suggestion.hasCorrection()) {
+                didYouMean = suggestion.suggestedQuery();
+            }
+        }
+
+        // 2. Execute BM25 retrieval
+        List<RankedSearchResult> rankedResults = rankedRetrievalEngine.search(trimmedQuery, limit);
         long durationMs = (System.nanoTime() - startNs) / 1_000_000;
 
-        return ResponseEntity.ok(buildSearchResponse(query, rankedResults, durationMs, explain));
+        // 3. Extract highlight terms from query, suggestions, and synonyms
+        Set<String> highlightTerms = extractHighlightTerms(trimmedQuery, didYouMean);
+
+        return ResponseEntity.ok(buildSearchResponse(trimmedQuery, didYouMean, rankedResults, durationMs, explain, highlightTerms));
     }
 
     /**
@@ -89,10 +137,12 @@ public class SearchController {
 
         try {
             long startNs = System.nanoTime();
-            List<RankedSearchResult> rankedResults = rankedBooleanQueryEngine.searchRankedBoolean(query.trim(), limit);
+            String trimmedQuery = query.trim();
+            List<RankedSearchResult> rankedResults = rankedBooleanQueryEngine.searchRankedBoolean(trimmedQuery, limit);
             long durationMs = (System.nanoTime() - startNs) / 1_000_000;
 
-            return ResponseEntity.ok(buildSearchResponse(query, rankedResults, durationMs, explain));
+            Set<String> highlightTerms = extractHighlightTerms(trimmedQuery, null);
+            return ResponseEntity.ok(buildSearchResponse(trimmedQuery, null, rankedResults, durationMs, explain, highlightTerms));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Invalid Boolean query syntax: " + ex.getMessage()
@@ -124,10 +174,12 @@ public class SearchController {
 
         try {
             long startNs = System.nanoTime();
-            List<RankedSearchResult> rankedResults = rankedBooleanQueryEngine.searchFiltered(query.trim(), filter.trim(), limit);
+            String trimmedQuery = query.trim();
+            List<RankedSearchResult> rankedResults = rankedBooleanQueryEngine.searchFiltered(trimmedQuery, filter.trim(), limit);
             long durationMs = (System.nanoTime() - startNs) / 1_000_000;
 
-            return ResponseEntity.ok(buildSearchResponse(query, rankedResults, durationMs, explain));
+            Set<String> highlightTerms = extractHighlightTerms(trimmedQuery, null);
+            return ResponseEntity.ok(buildSearchResponse(trimmedQuery, null, rankedResults, durationMs, explain, highlightTerms));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Invalid Boolean filter syntax: " + ex.getMessage()
@@ -150,11 +202,13 @@ public class SearchController {
     }
 
     private RankedSearchResponse buildSearchResponse(String query,
+                                                     String didYouMean,
                                                      List<RankedSearchResult> rankedResults,
                                                      long durationMs,
-                                                     boolean explain) {
+                                                     boolean explain,
+                                                     Set<String> highlightTerms) {
         if (rankedResults.isEmpty()) {
-            return new RankedSearchResponse(query, 0, 0, durationMs, List.of());
+            return new RankedSearchResponse(query, didYouMean, 0, 0, durationMs, List.of());
         }
 
         // Efficient batch metadata lookup to prevent N+1 queries
@@ -172,7 +226,27 @@ public class SearchController {
                     ? doc.getTitle()
                     : url;
             String domain = doc != null ? doc.getDomain() : "";
-            String snippet = doc != null ? createSnippet(doc.getCleanText()) : "";
+
+            String cleanText = doc != null ? doc.getCleanText() : null;
+            String snippet;
+            String highlightedSnippet;
+
+            if (cleanText != null && !cleanText.isBlank()) {
+                Set<String> docTerms = new HashSet<>(highlightTerms);
+                docTerms.addAll(result.matchedTerms());
+
+                if (snippetGeneratorService != null) {
+                    HighlightedSnippet hs = snippetGeneratorService.generateSnippet(cleanText, docTerms);
+                    snippet = hs.rawSnippet();
+                    highlightedSnippet = hs.highlightedHtml();
+                } else {
+                    snippet = createSnippet(cleanText);
+                    highlightedSnippet = snippet;
+                }
+            } else {
+                snippet = "";
+                highlightedSnippet = "";
+            }
 
             Map<String, TermExplanation> explanation = explain
                     ? buildExplanation(result.docId(), result.matchedTerms(), result.termScores())
@@ -184,6 +258,7 @@ public class SearchController {
                     title,
                     domain,
                     snippet,
+                    highlightedSnippet,
                     round4(result.score()),
                     result.rank(),
                     result.matchedTerms(),
@@ -193,11 +268,44 @@ public class SearchController {
 
         return new RankedSearchResponse(
                 query,
+                didYouMean,
                 hits.size(),
                 hits.size(),
                 durationMs,
                 hits
         );
+    }
+
+    private Set<String> extractHighlightTerms(String query, String didYouMean) {
+        Set<String> terms = new HashSet<>();
+        collectWordTokens(query, terms);
+        if (didYouMean != null) {
+            collectWordTokens(didYouMean, terms);
+        }
+        if (synonymExpansionService != null && !query.contains("\"")) {
+            ExpandedQuery expanded = synonymExpansionService.expandQuery(query);
+            if (expanded != null) {
+                terms.addAll(expanded.getUniqueTermStrings());
+            }
+        }
+        return terms;
+    }
+
+    private void collectWordTokens(String text, Set<String> target) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        Matcher matcher = Pattern.compile("[\\p{L}\\p{N}]+").matcher(text);
+        while (matcher.find()) {
+            String word = matcher.group().toLowerCase(Locale.ROOT);
+            if (!isBooleanKeyword(word)) {
+                target.add(word);
+            }
+        }
+    }
+
+    private boolean isBooleanKeyword(String word) {
+        return "and".equalsIgnoreCase(word) || "or".equalsIgnoreCase(word) || "not".equalsIgnoreCase(word);
     }
 
     private Map<String, TermExplanation> buildExplanation(long docId,

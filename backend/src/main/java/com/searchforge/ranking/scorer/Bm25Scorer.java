@@ -58,7 +58,31 @@ public class Bm25Scorer {
      * @param avgDocLength    Average document length across the collection (avgdl).
      * @return ScoredDocument containing total score and term-level score breakdowns.
      */
+    /**
+     * Scores a single document against precomputed query term IDFs with optional term weights.
+     *
+     * @param docStats        Document statistics containing term frequencies and document length.
+     * @param precomputedIdfs Map of query term to precomputed IDF weight.
+     * @param avgDocLength    Average document length across the collection (avgdl).
+     * @return ScoredDocument containing total score and term-level score breakdowns.
+     */
     public ScoredDocument scoreDocument(DocumentStats docStats, Map<String, Double> precomputedIdfs, double avgDocLength) {
+        return scoreDocument(docStats, precomputedIdfs, Map.of(), avgDocLength);
+    }
+
+    /**
+     * Scores a single document against precomputed query term IDFs and explicit term weights.
+     *
+     * @param docStats        Document statistics containing term frequencies and document length.
+     * @param precomputedIdfs Map of query term to precomputed IDF weight.
+     * @param termWeights     Map of term to weight multiplier (defaults to 1.0 if not present).
+     * @param avgDocLength    Average document length across the collection (avgdl).
+     * @return ScoredDocument containing total score and term-level score breakdowns.
+     */
+    public ScoredDocument scoreDocument(DocumentStats docStats,
+                                        Map<String, Double> precomputedIdfs,
+                                        Map<String, Double> termWeights,
+                                        double avgDocLength) {
         if (docStats == null) {
             throw new IllegalArgumentException("DocumentStats cannot be null");
         }
@@ -82,7 +106,8 @@ public class Bm25Scorer {
                 continue;
             }
 
-            double termContribution = termScorer.scoreTerm(tf, docStats.docLength(), avgDocLength, idf);
+            double weight = termWeights != null ? termWeights.getOrDefault(term, 1.0) : 1.0;
+            double termContribution = weight * termScorer.scoreTerm(tf, docStats.docLength(), avgDocLength, idf);
             if (termContribution > 0.0) {
                 totalScore += termContribution;
                 termScores.put(term, termContribution);
@@ -112,6 +137,22 @@ public class Bm25Scorer {
     public List<ScoredDocument> scoreDocuments(Collection<DocumentStats> documents,
                                                List<String> queryTerms,
                                                CollectionStats collectionStats) {
+        return scoreDocuments(documents, queryTerms, Map.of(), collectionStats);
+    }
+
+    /**
+     * Scores a batch of candidate documents against query terms, collection statistics, and term weights.
+     *
+     * @param documents       Collection of candidate document statistics.
+     * @param queryTerms      Collection of query terms.
+     * @param termWeights     Map of term to weight multiplier (e.g. 1.0 for original, 0.5 for synonyms).
+     * @param collectionStats Collection statistics.
+     * @return List of {@link ScoredDocument} sorted descending by score with ascending docId tie-breaking.
+     */
+    public List<ScoredDocument> scoreDocuments(Collection<DocumentStats> documents,
+                                               Collection<String> queryTerms,
+                                               Map<String, Double> termWeights,
+                                               CollectionStats collectionStats) {
         if (documents == null || documents.isEmpty()) {
             return List.of();
         }
@@ -120,7 +161,7 @@ public class Bm25Scorer {
         double avgDocLength = collectionStats != null ? collectionStats.avgDocLength() : 0.0;
 
         return documents.stream()
-                .map(doc -> scoreDocument(doc, idfs, avgDocLength))
+                .map(doc -> scoreDocument(doc, idfs, termWeights, avgDocLength))
                 .sorted()
                 .toList();
     }

@@ -5,10 +5,14 @@ import com.searchforge.indexer.model.Posting;
 import com.searchforge.indexer.model.PostingsList;
 import com.searchforge.indexer.token.ProcessedToken;
 import com.searchforge.indexer.token.Tokenizer;
+import com.searchforge.query.synonym.model.ExpandedQuery;
+import com.searchforge.query.synonym.model.ExpandedTerm;
+import com.searchforge.query.synonym.service.SynonymExpansionService;
 import com.searchforge.ranking.model.CollectionStats;
 import com.searchforge.ranking.model.DocumentStats;
 import com.searchforge.ranking.model.ScoredDocument;
 import com.searchforge.ranking.scorer.Bm25Scorer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -18,10 +22,11 @@ import java.util.*;
  *
  * Implements the standard information retrieval pipeline:
  * 1. Linguistic query processing (normalization, tokenization, stop-word removal, stemming).
- * 2. In-memory collection statistics extraction from {@link InvertedIndex}.
- * 3. Fast Term-At-A-Time (TAAT) candidate generation via posting list union.
- * 4. Pure in-memory BM25 scoring with zero database calls.
- * 5. Top-K truncation and ranked result packaging.
+ * 2. Optional synonym expansion with configurable discount weighting.
+ * 3. In-memory collection statistics extraction from {@link InvertedIndex}.
+ * 4. Fast Term-At-A-Time (TAAT) candidate generation via posting list union.
+ * 5. Pure in-memory BM25 scoring with zero database calls.
+ * 6. Top-K truncation and ranked result packaging.
  */
 @Service
 public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
@@ -29,13 +34,23 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
     private final InvertedIndex invertedIndex;
     private final Bm25Scorer bm25Scorer;
     private final Tokenizer tokenizer;
+    private final SynonymExpansionService synonymExpansionService;
 
     public DefaultRankedRetrievalEngine(InvertedIndex invertedIndex,
                                         Bm25Scorer bm25Scorer,
                                         Tokenizer tokenizer) {
+        this(invertedIndex, bm25Scorer, tokenizer, null);
+    }
+
+    @Autowired
+    public DefaultRankedRetrievalEngine(InvertedIndex invertedIndex,
+                                        Bm25Scorer bm25Scorer,
+                                        Tokenizer tokenizer,
+                                        @Autowired(required = false) SynonymExpansionService synonymExpansionService) {
         this.invertedIndex = Objects.requireNonNull(invertedIndex, "InvertedIndex cannot be null");
         this.bm25Scorer = Objects.requireNonNull(bm25Scorer, "Bm25Scorer cannot be null");
         this.tokenizer = Objects.requireNonNull(tokenizer, "Tokenizer cannot be null");
+        this.synonymExpansionService = synonymExpansionService;
     }
 
     @Override
@@ -44,6 +59,95 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
             return List.of();
         }
 
+        // Apply synonym expansion if configured and query is not an exact quoted phrase
+        if (synonymExpansionService != null && !query.contains("\"")) {
+            ExpandedQuery expanded = synonymExpansionService.expandQuery(query);
+            if (expanded != null && expanded.isExpanded()) {
+                return search(expanded, limit);
+            }
+        }
+
+        return searchStandard(query, limit);
+    }
+
+    @Override
+    public List<RankedSearchResult> search(ExpandedQuery expandedQuery, int limit) {
+        if (expandedQuery == null || limit <= 0) {
+            return List.of();
+        }
+        if (!expandedQuery.isExpanded()) {
+            return searchStandard(expandedQuery.originalQuery(), limit);
+        }
+
+        // 1. Linguistic processing of expanded terms to extract stems and maximum weights
+        Map<String, Double> stemWeights = new HashMap<>();
+        for (ExpandedTerm expTerm : expandedQuery.terms()) {
+            List<ProcessedToken> tokens = tokenizer.tokenize(expTerm.term());
+            for (ProcessedToken token : tokens) {
+                String stem = token.term();
+                stemWeights.merge(stem, expTerm.weight(), Math::max);
+            }
+        }
+
+        if (stemWeights.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. Collection Statistics Extraction
+        long totalDocuments = invertedIndex.getTotalDocuments();
+        if (totalDocuments <= 0) {
+            return List.of();
+        }
+        double avgDocLength = invertedIndex.getAverageDocumentLength();
+
+        Map<String, Long> dfMap = new HashMap<>();
+        for (String term : stemWeights.keySet()) {
+            long df = invertedIndex.getPostings(term)
+                    .map(pl -> (long) pl.size())
+                    .orElse(0L);
+            dfMap.put(term, df);
+        }
+        CollectionStats collectionStats = new CollectionStats(totalDocuments, avgDocLength, dfMap);
+
+        // 3. Candidate Generation via Term-At-A-Time (TAAT) Union
+        Map<Long, Map<String, Integer>> candidateTermFrequencies = new HashMap<>();
+        for (String term : stemWeights.keySet()) {
+            Optional<PostingsList> postingsOpt = invertedIndex.getPostings(term);
+            if (postingsOpt.isEmpty()) {
+                continue;
+            }
+            for (Posting posting : postingsOpt.get().getPostings()) {
+                candidateTermFrequencies
+                        .computeIfAbsent(posting.documentId(), k -> new HashMap<>())
+                        .put(term, posting.termFrequency());
+            }
+        }
+
+        if (candidateTermFrequencies.isEmpty()) {
+            return List.of();
+        }
+
+        // 4. Convert Candidates to DocumentStats
+        List<DocumentStats> candidateStats = new ArrayList<>(candidateTermFrequencies.size());
+        for (Map.Entry<Long, Map<String, Integer>> entry : candidateTermFrequencies.entrySet()) {
+            long docId = entry.getKey();
+            int docLength = invertedIndex.getDocLength(docId);
+            candidateStats.add(new DocumentStats(docId, docLength, entry.getValue()));
+        }
+
+        // 5. In-Memory Scoring with Synonym Weight Multipliers
+        List<ScoredDocument> scoredDocuments = bm25Scorer.scoreDocuments(
+                candidateStats,
+                stemWeights.keySet(),
+                stemWeights,
+                collectionStats
+        );
+
+        // 6. Top-K Truncation and Ranked Result Packaging
+        return packageTopKResults(scoredDocuments, limit);
+    }
+
+    private List<RankedSearchResult> searchStandard(String query, int limit) {
         // 1. Linguistic Query Processing
         List<ProcessedToken> tokens = tokenizer.tokenize(query);
         if (tokens.isEmpty()) {
@@ -65,8 +169,8 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
         Map<String, Long> dfMap = new HashMap<>();
         for (String term : uniqueTerms) {
             long df = invertedIndex.getPostings(term)
-                    .map(PostingsList::size)
-                    .orElse(0);
+                    .map(pl -> (long) pl.size())
+                    .orElse(0L);
             dfMap.put(term, df);
         }
         CollectionStats collectionStats = new CollectionStats(totalDocuments, avgDocLength, dfMap);
@@ -105,6 +209,10 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
         );
 
         // 6. Top-K Truncation and Ranked Result Packaging
+        return packageTopKResults(scoredDocuments, limit);
+    }
+
+    private List<RankedSearchResult> packageTopKResults(List<ScoredDocument> scoredDocuments, int limit) {
         List<RankedSearchResult> results = new ArrayList<>();
         int rank = 1;
         for (ScoredDocument doc : scoredDocuments) {
