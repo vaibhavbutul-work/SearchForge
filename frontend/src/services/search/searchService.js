@@ -6,16 +6,18 @@
  *
  * Enforces strict backend truth:
  * - Zero mocked search results.
- * - Preserves backend scoring and rank order.
+ * - Preserves backend multi-modal scoring and rank order (BM25, Dense Semantic, RRF).
  * - Normalizes response contracts defensively.
  */
 
-import apiClient from '../api/apiClient';
+import apiClient from '../api/apiClient.js';
 
 class SearchService {
   /**
    * Unified search dispatcher routing requests based on selected search mode:
-   * - 'ranked': Free-text Okapi BM25 ranked search (/api/v1/search)
+   * - 'hybrid': Multi-modal retrieval combining BM25 + Semantic via Reciprocal Rank Fusion
+   * - 'lexical' / 'ranked': Free-text Okapi BM25 ranked search (/api/v1/search?mode=lexical)
+   * - 'semantic': Dense neural vector retrieval based on continuous cosine similarity (/api/v1/search?mode=semantic)
    * - 'boolean': Abstract Syntax Tree Boolean retrieval (/api/v1/search/ranked-boolean)
    * - 'filtered': Free-text BM25 constrained by a Boolean filter (/api/v1/search/filtered)
    *
@@ -23,27 +25,32 @@ class SearchService {
    * @param {Object} options - Search options { mode, filter, limit, explain }
    * @returns {Promise<Object>} Normalized RankedSearchResponse
    */
-  async search(query, { mode = 'ranked', filter = '', limit = 10, explain = false } = {}) {
+  async search(query, { mode = 'hybrid', filter = '', limit = 10, explain = false } = {}) {
     switch (mode) {
       case 'boolean':
         return this.searchRankedBoolean(query, { limit, explain });
       case 'filtered':
         return this.searchFiltered(query, filter, { limit, explain });
+      case 'semantic':
+        return this.searchFreeText(query, { mode: 'semantic', limit, explain });
+      case 'lexical':
       case 'ranked':
+        return this.searchFreeText(query, { mode: 'lexical', limit, explain });
+      case 'hybrid':
       default:
-        return this.searchFreeText(query, { limit, explain });
+        return this.searchFreeText(query, { mode: 'hybrid', limit, explain });
     }
   }
 
   /**
-   * Free-text BM25 ranked retrieval (Mode A) enriched with spelling suggestions,
+   * Multi-mode search retrieval (hybrid, lexical, semantic) enriched with spelling suggestions,
    * synonym expansions, and dynamic highlighted snippets.
    *
    * @param {string} query - Free-text search terms
-   * @param {Object} options - Search options { limit, explain }
+   * @param {Object} options - Search options { mode, limit, explain }
    * @returns {Promise<Object>} Normalized RankedSearchResponse
    */
-  async searchFreeText(query, { limit = 10, explain = false } = {}) {
+  async searchFreeText(query, { mode = 'hybrid', limit = 10, explain = false } = {}) {
     if (!query || !query.trim()) {
       return this.emptyResponse('');
     }
@@ -51,6 +58,7 @@ class SearchService {
     const response = await apiClient.get('/api/v1/search', {
       params: {
         q: query.trim(),
+        mode,
         limit,
         explain,
       },
@@ -155,7 +163,7 @@ class SearchService {
   }
 
   /**
-   * Defensively normalizes the backend REST response while strictly preserving ranking order and scores.
+   * Defensively normalizes the backend REST response while strictly preserving ranking order and multi-modal scores.
    */
   normalizeSearchResponse(raw, originalQuery) {
     if (!raw) {
@@ -163,20 +171,30 @@ class SearchService {
     }
 
     const results = (raw.results || []).map((hit, index) => ({
-      docId: hit.docId,
+      docId: hit.docId ?? hit.documentId,
+      documentId: hit.documentId ?? hit.docId,
       url: hit.url || '#',
       title: hit.title || hit.url || 'Untitled Document',
       domain: hit.domain || '',
       snippet: hit.snippet || '',
       highlightedSnippet: hit.highlightedSnippet || null,
       score: hit.score,
-      rank: hit.rank ?? index + 1,
+      rank: hit.rank ?? hit.finalRank ?? index + 1,
+      finalRank: hit.finalRank ?? hit.rank ?? index + 1,
       matchedTerms: hit.matchedTerms || [],
       explanation: hit.explanation || null,
+      bm25Score: hit.bm25Score !== undefined ? hit.bm25Score : null,
+      semanticScore: hit.semanticScore !== undefined ? hit.semanticScore : null,
+      bm25Rank: hit.bm25Rank !== undefined ? hit.bm25Rank : null,
+      semanticRank: hit.semanticRank !== undefined ? hit.semanticRank : null,
+      rrfScore: hit.rrfScore !== undefined ? hit.rrfScore : null,
     }));
 
     return {
       query: raw.query || originalQuery,
+      mode: raw.mode || 'hybrid',
+      fallback: Boolean(raw.fallback),
+      fallbackReason: raw.fallbackReason || null,
       didYouMean: raw.didYouMean || null,
       totalHits: raw.totalHits ?? results.length,
       returnedHits: raw.returnedHits ?? results.length,
@@ -188,6 +206,9 @@ class SearchService {
   emptyResponse(query) {
     return {
       query,
+      mode: 'hybrid',
+      fallback: false,
+      fallbackReason: null,
       didYouMean: null,
       totalHits: 0,
       returnedHits: 0,

@@ -19,6 +19,10 @@ import com.searchforge.ranking.retrieval.RankedRetrievalEngine;
 import com.searchforge.ranking.retrieval.RankedSearchResult;
 import com.searchforge.ranking.scorer.Bm25TermScorer;
 import com.searchforge.ranking.weight.IdfCalculator;
+import com.searchforge.search.hybrid.HybridCandidate;
+import com.searchforge.search.hybrid.HybridSearchResult;
+import com.searchforge.search.hybrid.HybridSearchService;
+import com.searchforge.search.hybrid.SearchMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -31,11 +35,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Production REST controller exposing BM25 ranked search, ranked Boolean retrieval,
- * and filtered relevance search enriched with query intelligence:
+ * Production REST controller exposing multi-modal search (lexical BM25, dense semantic,
+ * and hybrid RRF retrieval), ranked Boolean retrieval, and filtered relevance search enriched with query intelligence:
  * 1. Automatic spelling error detection and didYouMean suggestions.
  * 2. Query expansion via synonym dictionaries.
- * 3. Dynamic relevant snippet generation with XSS-safe <mark> highlighting.
+ * 3. Dynamic relevant snippet generation with XSS-safe &lt;mark&gt; highlighting.
+ * 4. Multi-modal rank fusion explainability and graceful degradation telemetry.
  */
 @RestController
 @RequestMapping("/api/v1/search")
@@ -50,6 +55,7 @@ public class SearchController {
     private final SpellingCorrectionService spellingCorrectionService;
     private final SynonymExpansionService synonymExpansionService;
     private final SnippetGeneratorService snippetGeneratorService;
+    private final HybridSearchService hybridSearchService;
 
     public SearchController(RankedRetrievalEngine rankedRetrievalEngine,
                             RankedBooleanQueryEngine rankedBooleanQueryEngine,
@@ -58,7 +64,21 @@ public class SearchController {
                             @Qualifier("bm25IdfCalculator") IdfCalculator idfCalculator,
                             Bm25TermScorer termScorer) {
         this(rankedRetrievalEngine, rankedBooleanQueryEngine, crawledDocumentRepository,
-                invertedIndex, idfCalculator, termScorer, null, null, null);
+                invertedIndex, idfCalculator, termScorer, null, null, null, null);
+    }
+
+    public SearchController(RankedRetrievalEngine rankedRetrievalEngine,
+                            RankedBooleanQueryEngine rankedBooleanQueryEngine,
+                            CrawledDocumentRepository crawledDocumentRepository,
+                            InvertedIndex invertedIndex,
+                            @Qualifier("bm25IdfCalculator") IdfCalculator idfCalculator,
+                            Bm25TermScorer termScorer,
+                            SpellingCorrectionService spellingCorrectionService,
+                            SynonymExpansionService synonymExpansionService,
+                            SnippetGeneratorService snippetGeneratorService) {
+        this(rankedRetrievalEngine, rankedBooleanQueryEngine, crawledDocumentRepository,
+                invertedIndex, idfCalculator, termScorer, spellingCorrectionService,
+                synonymExpansionService, snippetGeneratorService, null);
     }
 
     @Autowired
@@ -70,7 +90,8 @@ public class SearchController {
                             Bm25TermScorer termScorer,
                             @Autowired(required = false) SpellingCorrectionService spellingCorrectionService,
                             @Autowired(required = false) SynonymExpansionService synonymExpansionService,
-                            @Autowired(required = false) SnippetGeneratorService snippetGeneratorService) {
+                            @Autowired(required = false) SnippetGeneratorService snippetGeneratorService,
+                            @Autowired(required = false) HybridSearchService hybridSearchService) {
         this.rankedRetrievalEngine = Objects.requireNonNull(rankedRetrievalEngine, "RankedRetrievalEngine cannot be null");
         this.rankedBooleanQueryEngine = Objects.requireNonNull(rankedBooleanQueryEngine, "RankedBooleanQueryEngine cannot be null");
         this.crawledDocumentRepository = Objects.requireNonNull(crawledDocumentRepository, "CrawledDocumentRepository cannot be null");
@@ -80,22 +101,40 @@ public class SearchController {
         this.spellingCorrectionService = spellingCorrectionService;
         this.synonymExpansionService = synonymExpansionService;
         this.snippetGeneratorService = snippetGeneratorService;
+        this.hybridSearchService = hybridSearchService;
     }
 
     /**
-     * GET /api/v1/search?q={query}&limit={limit}&explain={boolean}
-     * Executes free-text BM25 ranked retrieval (Mode A) enriched with spelling suggestions,
-     * synonym expansion, and dynamic snippet generation with highlighting.
+     * Backward-compatible Java overload for searches defaulting to lexical retrieval mode.
+     */
+    public ResponseEntity<?> searchFreeText(String query, int limit, boolean explain) {
+        return searchFreeText(query, "lexical", limit, explain);
+    }
+
+    /**
+     * GET /api/v1/search?q={query}&amp;mode={mode}&amp;limit={limit}&amp;explain={boolean}
+     * Executes free-text search across lexical (BM25), dense semantic, or hybrid (RRF) retrieval modes,
+     * enriched with spelling suggestions, synonym expansion, and dynamic snippet generation with highlighting.
      */
     @GetMapping
     public ResponseEntity<?> searchFreeText(
             @RequestParam(name = "q", required = false) String query,
+            @RequestParam(name = "mode", defaultValue = "lexical") String modeStr,
             @RequestParam(name = "limit", defaultValue = "10") int limit,
             @RequestParam(name = "explain", defaultValue = "false") boolean explain) {
 
         ResponseEntity<?> validationError = validateQueryParams(query, limit);
         if (validationError != null) {
             return validationError;
+        }
+
+        SearchMode searchMode;
+        try {
+            searchMode = SearchMode.fromString(modeStr);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", ex.getMessage()
+            ));
         }
 
         long startNs = System.nanoTime();
@@ -110,18 +149,39 @@ public class SearchController {
             }
         }
 
-        // 2. Execute BM25 retrieval
+        // 2. Delegate to HybridSearchService if available
+        if (hybridSearchService != null) {
+            HybridSearchResult hybridResult = hybridSearchService.search(trimmedQuery, searchMode, limit);
+            long durationMs = (System.nanoTime() - startNs) / 1_000_000;
+            Set<String> highlightTerms = extractHighlightTerms(trimmedQuery, didYouMean);
+
+            return ResponseEntity.ok(buildHybridResponse(
+                    trimmedQuery,
+                    hybridResult,
+                    didYouMean,
+                    durationMs,
+                    explain,
+                    highlightTerms
+            ));
+        }
+
+        // Fallback for minimal testing harnesses where HybridSearchService is not wired
+        if (searchMode != SearchMode.LEXICAL) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Hybrid and semantic search services are not configured in this profile"
+            ));
+        }
+
+        // 3. Fallback standard BM25 retrieval
         List<RankedSearchResult> rankedResults = rankedRetrievalEngine.search(trimmedQuery, limit);
         long durationMs = (System.nanoTime() - startNs) / 1_000_000;
-
-        // 3. Extract highlight terms from query, suggestions, and synonyms
         Set<String> highlightTerms = extractHighlightTerms(trimmedQuery, didYouMean);
 
         return ResponseEntity.ok(buildSearchResponse(trimmedQuery, didYouMean, rankedResults, durationMs, explain, highlightTerms));
     }
 
     /**
-     * GET /api/v1/search/ranked-boolean?q={booleanQuery}&limit={limit}&explain={boolean}
+     * GET /api/v1/search/ranked-boolean?q={booleanQuery}&amp;limit={limit}&amp;explain={boolean}
      * Evaluates a Boolean query AST and ranks matching candidates via BM25 (Mode C).
      */
     @GetMapping("/ranked-boolean")
@@ -151,7 +211,7 @@ public class SearchController {
     }
 
     /**
-     * GET /api/v1/search/filtered?q={query}&filter={booleanFilter}&limit={limit}&explain={boolean}
+     * GET /api/v1/search/filtered?q={query}&amp;filter={booleanFilter}&amp;limit={limit}&amp;explain={boolean}
      * Executes free-text BM25 search restricted strictly to candidate documents passing a Boolean filter (Mode B).
      */
     @GetMapping("/filtered")
@@ -201,6 +261,104 @@ public class SearchController {
         return null;
     }
 
+    private RankedSearchResponse buildHybridResponse(String query,
+                                                     HybridSearchResult hybridResult,
+                                                     String didYouMean,
+                                                     long durationMs,
+                                                     boolean explain,
+                                                     Set<String> highlightTerms) {
+        String effectiveModeStr = hybridResult.effectiveMode().name().toLowerCase(Locale.ROOT);
+        Boolean fallbackFlag = hybridResult.fallback() ? Boolean.TRUE : null;
+        String fallbackReason = hybridResult.fallbackReason();
+
+        if (hybridResult.candidates().isEmpty()) {
+            return new RankedSearchResponse(
+                    query,
+                    effectiveModeStr,
+                    didYouMean,
+                    0,
+                    0,
+                    durationMs,
+                    fallbackFlag,
+                    fallbackReason,
+                    List.of()
+            );
+        }
+
+        List<Long> docIds = hybridResult.candidates().stream().map(HybridCandidate::docId).toList();
+        Map<Long, CrawledDocument> docMap = crawledDocumentRepository.findAllById(docIds)
+                .stream()
+                .collect(Collectors.toMap(CrawledDocument::getId, Function.identity()));
+
+        List<RankedSearchHitResponse> hits = new ArrayList<>(hybridResult.candidates().size());
+        for (HybridCandidate candidate : hybridResult.candidates()) {
+            CrawledDocument doc = docMap.get(candidate.docId());
+
+            String url = doc != null ? doc.getUrl() : "urn:doc:" + candidate.docId();
+            String title = (doc != null && doc.getTitle() != null && !doc.getTitle().isBlank())
+                    ? doc.getTitle()
+                    : url;
+            String domain = doc != null ? doc.getDomain() : "";
+
+            String cleanText = doc != null ? doc.getCleanText() : null;
+            String snippet;
+            String highlightedSnippet;
+
+            if (cleanText != null && !cleanText.isBlank()) {
+                Set<String> docTerms = new HashSet<>(highlightTerms);
+                docTerms.addAll(candidate.matchedTerms());
+
+                HighlightedSnippet hs = snippetGeneratorService != null
+                        ? snippetGeneratorService.generateSnippet(cleanText, docTerms)
+                        : null;
+                if (hs != null) {
+                    snippet = hs.rawSnippet();
+                    highlightedSnippet = hs.highlightedHtml();
+                } else {
+                    snippet = createSnippet(cleanText);
+                    highlightedSnippet = snippet;
+                }
+            } else {
+                snippet = "";
+                highlightedSnippet = "";
+            }
+
+            Map<String, TermExplanation> explanation = (explain && !candidate.matchedTerms().isEmpty())
+                    ? buildExplanation(candidate.docId(), candidate.matchedTerms(), candidate.termScores())
+                    : null;
+
+            hits.add(new RankedSearchHitResponse(
+                    candidate.docId(),
+                    url,
+                    title,
+                    domain,
+                    snippet,
+                    highlightedSnippet,
+                    candidate.score(),
+                    candidate.rank(),
+                    candidate.matchedTerms(),
+                    explanation,
+                    candidate.bm25Score(),
+                    candidate.semanticScore(),
+                    candidate.bm25Rank(),
+                    candidate.semanticRank(),
+                    candidate.rrfScore()
+            ));
+        }
+
+        return new RankedSearchResponse(
+                query,
+                effectiveModeStr,
+                didYouMean,
+                hits.size(),
+                hits.size(),
+                durationMs,
+                fallbackFlag,
+                fallbackReason,
+                hits
+        );
+    }
+
     private RankedSearchResponse buildSearchResponse(String query,
                                                      String didYouMean,
                                                      List<RankedSearchResult> rankedResults,
@@ -208,7 +366,7 @@ public class SearchController {
                                                      boolean explain,
                                                      Set<String> highlightTerms) {
         if (rankedResults.isEmpty()) {
-            return new RankedSearchResponse(query, didYouMean, 0, 0, durationMs, List.of());
+            return new RankedSearchResponse(query, "lexical", didYouMean, 0, 0, durationMs, List.of());
         }
 
         // Efficient batch metadata lookup to prevent N+1 queries
@@ -235,8 +393,10 @@ public class SearchController {
                 Set<String> docTerms = new HashSet<>(highlightTerms);
                 docTerms.addAll(result.matchedTerms());
 
-                if (snippetGeneratorService != null) {
-                    HighlightedSnippet hs = snippetGeneratorService.generateSnippet(cleanText, docTerms);
+                HighlightedSnippet hs = snippetGeneratorService != null
+                        ? snippetGeneratorService.generateSnippet(cleanText, docTerms)
+                        : null;
+                if (hs != null) {
                     snippet = hs.rawSnippet();
                     highlightedSnippet = hs.highlightedHtml();
                 } else {
@@ -268,6 +428,7 @@ public class SearchController {
 
         return new RankedSearchResponse(
                 query,
+                "lexical",
                 didYouMean,
                 hits.size(),
                 hits.size(),

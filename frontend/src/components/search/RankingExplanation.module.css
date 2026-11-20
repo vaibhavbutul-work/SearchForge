@@ -27,6 +27,8 @@
   margin-bottom: var(--space-3);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .panelTitle {
@@ -44,6 +46,108 @@
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--color-accent);
+}
+
+/* Multi-Modal Fusion Grid */
+.fusionSection {
+  margin-bottom: var(--space-4);
+}
+
+.fusionCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.fusionCard {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fusionCardTotal {
+  background-color: var(--color-accent-subtle);
+  border-color: rgba(49, 87, 164, 0.2);
+}
+
+.fusionCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.fusionCardIcon {
+  font-size: 14px;
+}
+
+.fusionCardTitle {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fusionCardStat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.fusionStatLabel {
+  color: var(--color-text-secondary);
+}
+
+.fusionStatValue {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.fusionStatFormula {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.consensusBanner {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.consensusTextSuccess {
+  color: #15803D;
+}
+
+.consensusTextLexical {
+  color: #1E293B;
+}
+
+.consensusTextSemantic {
+  color: #6B21A8;
+}
+
+.subSectionHeader {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  margin-bottom: var(--space-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .tableWrapper {

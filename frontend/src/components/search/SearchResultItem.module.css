@@ -107,7 +107,8 @@
 .metadataBar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
@@ -127,6 +128,36 @@
   color: var(--color-text-secondary);
 }
 
+.rrfBadge {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  background-color: var(--color-accent-subtle);
+  border: 1px solid rgba(49, 87, 164, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 1px var(--space-2);
+  color: var(--color-accent);
+}
+
+.bm25Badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background-color: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  color: #334155;
+}
+
+.semanticBadge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background-color: #F3E8FF;
+  border: 1px solid #D8B4FE;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  color: #6B21A8;
+}
+
 .explainButton {
   background: none;
   border: none;
@@ -139,6 +170,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  margin-left: auto;
 }
 
 .explainButton:hover {

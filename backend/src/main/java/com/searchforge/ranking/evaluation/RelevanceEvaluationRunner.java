@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -26,12 +27,24 @@ public class RelevanceEvaluationRunner {
 
         List<RankedSearchResult> hits = engine.search(query.query(), k);
         List<Long> retrievedDocIds = hits.stream().map(RankedSearchResult::docId).toList();
+        return evaluateHits(retrievedDocIds, query, k);
+    }
 
-        double pAtK = RelevanceMetricsCalculator.precisionAtK(retrievedDocIds, query, k);
-        double rAtK = RelevanceMetricsCalculator.recallAtK(retrievedDocIds, query, k);
-        double rr = RelevanceMetricsCalculator.reciprocalRank(retrievedDocIds, query);
-        double ndcg = RelevanceMetricsCalculator.ndcgAtK(retrievedDocIds, query, k);
-        int relevantRetrieved = (int) retrievedDocIds.stream().limit(k).filter(query::isRelevant).count();
+    /**
+     * Evaluates a pre-computed list of retrieved document IDs against ground truth.
+     */
+    public QueryEvaluationResult evaluateHits(List<Long> retrievedDocIds, EvaluationQuery query, int k) {
+        Objects.requireNonNull(query, "EvaluationQuery cannot be null");
+        if (k <= 0) {
+            throw new IllegalArgumentException("k must be positive: " + k);
+        }
+
+        List<Long> docIds = retrievedDocIds != null ? retrievedDocIds : List.of();
+        double pAtK = RelevanceMetricsCalculator.precisionAtK(docIds, query, k);
+        double rAtK = RelevanceMetricsCalculator.recallAtK(docIds, query, k);
+        double rr = RelevanceMetricsCalculator.reciprocalRank(docIds, query);
+        double ndcg = RelevanceMetricsCalculator.ndcgAtK(docIds, query, k);
+        int relevantRetrieved = (int) docIds.stream().limit(k).filter(query::isRelevant).count();
 
         return new QueryEvaluationResult(
                 query.query(),
@@ -40,8 +53,46 @@ public class RelevanceEvaluationRunner {
                 rAtK,
                 rr,
                 ndcg,
-                retrievedDocIds.size(),
+                docIds.size(),
                 relevantRetrieved
+        );
+    }
+
+    /**
+     * Executes evaluation across all benchmark queries using pre-computed hit lists.
+     */
+    public EvaluationReport evaluateAllHits(Map<EvaluationQuery, List<Long>> queryHitsMap, int k) {
+        if (queryHitsMap == null || queryHitsMap.isEmpty()) {
+            return new EvaluationReport(0, k, 0.0, 0.0, 0.0, 0.0, List.of());
+        }
+        if (k <= 0) {
+            throw new IllegalArgumentException("k must be positive: " + k);
+        }
+
+        List<QueryEvaluationResult> results = new ArrayList<>(queryHitsMap.size());
+        double totalPrecision = 0.0;
+        double totalRecall = 0.0;
+        double totalRR = 0.0;
+        double totalNdcg = 0.0;
+
+        for (Map.Entry<EvaluationQuery, List<Long>> entry : queryHitsMap.entrySet()) {
+            QueryEvaluationResult res = evaluateHits(entry.getValue(), entry.getKey(), k);
+            results.add(res);
+            totalPrecision += res.precisionAtK();
+            totalRecall += res.recallAtK();
+            totalRR += res.reciprocalRank();
+            totalNdcg += res.ndcgAtK();
+        }
+
+        int n = queryHitsMap.size();
+        return new EvaluationReport(
+                n,
+                k,
+                totalPrecision / n,
+                totalRecall / n,
+                totalRR / n,
+                totalNdcg / n,
+                results
         );
     }
 

@@ -1,3 +1,9 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .selectorContainer {
   display: flex;
   align-items: center;
@@ -33,6 +39,26 @@
   outline: 2px solid var(--color-accent-subtle);
 }
 
+.modeBadge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.modeDescription {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  max-width: 420px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
 .filterInputContainer {
   display: flex;
   align-items: center;
@@ -63,15 +89,4 @@
 
 .filterInput:focus {
   border-color: var(--color-border-focus);
-}
-
-.modeBadge {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-accent);
 }

@@ -7,17 +7,17 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-273%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="273 Tests Passing"></a>
-  <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%201.000%20%7C%20NDCG@3%201.000-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-421%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="421 Tests Passing"></a>
+  <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%200.908%20%7C%20NDCG@3%200.865-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
 <p align="center">
   <a href="https://vaibhavbutul-work.github.io/SearchForge/"><strong>🌐 Launch Live Interactive Documentation Website</strong></a> •
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
+  <a href="#-dense-semantic-retrieval--hybrid-search-phase-7"><strong>Hybrid & Semantic Search</strong></a> •
   <a href="#-okapi-bm25-relevance-engine"><strong>BM25 Math</strong></a> •
   <a href="#-query-intelligence--search-experience-phase-5"><strong>Query Intelligence</strong></a> •
-  <a href="#-verified-real-world-experiment"><strong>Real-World Benchmark</strong></a> •
   <a href="#-rest-api-reference"><strong>API Reference</strong></a> •
   <a href="#-quickstart-guide"><strong>Quickstart</strong></a>
 </p>
@@ -370,14 +370,65 @@ Measured across 200 iterations with JIT warm-up on Java 21 LTS:
 
 *Total query intelligence overhead is **under 90 microseconds**.*
 
+## 🧠 Dense Semantic Retrieval & Hybrid Search (Phase 7)
+
+SearchForge introduces native dense vector semantic retrieval and Reciprocal Rank Fusion (RRF) hybrid search, bridging exact keyword precision with conceptual language understanding:
+
+### 1. Local ONNX Runtime Inference (`all-MiniLM-L6-v2`)
+* **Zero External Dependencies:** Executes the 22.7M-parameter transformer directly on CPU via Microsoft ONNX Runtime Java bindings. Zero external vector databases (no Pinecone, Milvus, Weaviate), zero paid embedding APIs.
+* **384-Dimensional Embeddings:** Projects documents and queries into a continuous 384-dimensional latent semantic space.
+
+### 2. Authentic BERT WordPiece Tokenizer
+* **30,522-Token Vocabulary:** Loaded directly from the model's official `vocab.txt` packaged in `backend/src/main/resources/models/vocab.txt`.
+* **Subword Segmentation:** Implements text lowercasing, punctuation separation, and greedy longest-match prefix search with `##` continuation tokens (e.g. `microservices` $\rightarrow$ `micro`, `##ser`, `##vic`, `##es`).
+* **Special Token Sequencing:** Inserts `[CLS]` (ID 101) and `[SEP]` (ID 102), and handles unknown tokens via `[UNK]` (ID 100) and padding via `[PAD]` (ID 0).
+
+### 3. Dynamic Sequence Length Tensor Allocation
+* **Zero Computation Waste:** Dynamically allocates tensor shapes `[batchSize, actualSequenceLength]` instead of rigid 256-token padding.
+* **265x–336x Latency Reduction:** Warmed-up CPU inference dropped from 625.44 ms to **2.36 ms**, enabling real-time hybrid retrieval in under **2.5 ms end-to-end**.
+
+### 4. Attention-Weighted Mean Pooling & L2 Normalization
+* **Attention-Masked Pooling:** Computes the sentence embedding vector by averaging token hidden states weighted strictly by active attention flags:
+  $$\mathbf{v}_{\text{pooled}} = \frac{\sum_{i=1}^{L} \mathbf{h}_i \cdot m_i}{\sum_{i=1}^{L} m_i}$$
+* **L2 Unit Normalization:** Scales the pooled vector to unit length ($\|\mathbf{v}\|_2 = 1$), guaranteeing that the vector dot product equals Cosine Similarity in $[-1.0, 1.0]$.
+
+### 5. Reciprocal Rank Fusion (RRF) Hybrid Search
+* **Rank-Based Score Fusion:** Blends lexical BM25 and dense semantic rankings using standard Reciprocal Rank Fusion:
+  $$\text{RRF}(d) = \sum_{m \in \{\text{lexical}, \text{semantic}\}} \frac{1}{60 + r_m(d)}$$
+* **Best-of-Both-Worlds Relevance:** Solves vocabulary mismatch on conceptual queries while strictly preserving exact identifier and phrase matches.
+
+### 6. Thread-Safe Query Embedding Cache
+* **Bounded LRU Cache:** Thread-safe `QueryEmbeddingCache` with normalized query keys, defensive vector copying, and eviction tracking.
+* **Sub-Millisecond Response:** Repeated queries bypass ONNX inference entirely, executing hybrid search in **0.10 ms**.
+
+### 7. Multi-Cutoff Search Quality Benchmarks (120 Docs, 40 Categorized Queries)
+
+| Retrieval Mode | NDCG@3 | NDCG@5 | MRR | Precision@3 | Precision@5 | Recall@3 | Recall@5 |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **BM25 Lexical** | 0.8251 | 0.8410 | 0.8667 | 0.7750 | 0.6350 | 0.6125 | 0.8083 |
+| **Dense Semantic (ONNX)** | 0.8142 | 0.8327 | 0.8542 | 0.7667 | 0.6200 | 0.6083 | 0.7917 |
+| **Hybrid Search (RRF)** | **0.8649** | **0.8792** | **0.9083** | **0.8083** | **0.6650** | **0.6417** | **0.8458** |
+| **Hybrid Advantage** | **+4.8%** | **+4.5%** | **+4.8%** | **+4.3%** | **+4.7%** | **+4.8%** | **+4.6%** |
+
+---
+
+## 🎨 Complete Frontend Web Application (Phase 6)
+
+SearchForge includes a decoupled, modern search interface built in React 18 and Vite 6 (`frontend/`):
+* **Multi-Modal Retrieval Selector:** Instantly toggle between **Hybrid (Default)**, **Semantic (Dense Vectors)**, **Lexical (BM25)**, **Boolean (AST)**, and **Filtered** modes.
+* **Ranking Explainability Drawer:** Expand any search result to inspect Robertson-Spärck Jones BM25 score breakdowns, dense semantic similarity scores, or RRF reciprocal rank calculations.
+* **Query Intelligence Integration:** Real-time Trie autocomplete suggestions with keyboard navigation, spelling correction prompts (`didYouMean`), and highlighted dynamic snippets with `<mark>` tags.
+* **Search History & Keyboard Accessibility:** Browser `localStorage` search history, global `/` keyboard focus, and WCAG AA accessible contrast ratios.
+
 ---
 
 ## 📡 REST API Reference
 
-### 1. Relevance Search Engine (`/api/v1/search`)
+### 1. Relevance & Hybrid Search Engine (`/api/v1/search`)
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/search?q={query}&limit=10&explain={bool}` | Free-text BM25 search with spelling suggestions, synonyms, and dynamic snippets |
+| `GET` | `/api/v1/search?q={query}&mode={hybrid\|semantic\|lexical}&limit=10&explain={bool}` | Multi-modal search: Hybrid RRF (default), Dense Semantic (ONNX), or Lexical (BM25) |
+| `GET` | `/api/v1/search/semantic?q={query}&limit=10` | Direct dense semantic search endpoint returning cosine similarity scores |
 | `GET` | `/api/v1/search/autocomplete?prefix={prefix}&limit=5` | Real-time prefix autocomplete suggestions ranked by popularity |
 | `GET` | `/api/v1/search/suggest?q={query}` | Damerau-Levenshtein spelling error detection and `didYouMean` suggestions |
 | `GET` | `/api/v1/search/ranked-boolean?q={boolQuery}&limit=10` | Ranked Boolean search evaluating AST logic with highlighted snippets |
@@ -427,15 +478,27 @@ Measured across 200 iterations with JIT warm-up on Java 21 LTS:
 
 ---
 
-## 🧪 Automated Testing Audit (273 Tests)
+## 🧪 Automated Testing Audit (421 Tests)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 273, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~18.7s)
+[INFO] Tests run: 408, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~33.8s)
+
+ℹ tests 13, pass 13, fail 0 (Total time: ~88ms)
 ```
 
-SearchForge includes **273 hermetic automated tests** across all subsystems:
+SearchForge includes **421 hermetic automated tests (408 Backend + 13 Frontend)** across all subsystems:
+- **Phase 7 Hybrid Search & Semantic Retrieval (148 tests):**
+  - `WordPieceTokenizerTest`: 11 tests for BERT vocabulary loading (30,522 tokens), punctuation separation, greedy subword continuation (`##`), and special tokens.
+  - `RealOnnxLatencyBenchmarkTest`: Real ONNX runtime inference benchmarks, dynamic sequence length validation, and component timing breakdowns.
+  - `QueryEmbeddingCacheTest`: Thread-safe LRU eviction, query normalization, mutation protection, and hit/miss telemetry.
+  - `ReciprocalRankFusionEngineTest`: Rank-based score blending, multi-list aggregation, and tie-breaking.
+  - `SemanticRetrievalQualityTest`: Semantic ranking, irrelevant document rejection, score bounds $[-1.0, 1.0]$, and empty vector storage handling.
+  - `BooleanAndPhraseCorrectnessRegressionTest`: Strict Boolean AST semantics (`AND`, `OR`, `AND NOT`) and adjacent phrase match preservation.
+  - `DocumentEmbeddingServiceTest`: Model compatibility verification, vector storage warmup, and high-throughput batch embedding.
+  - `SearchControllerHybridTest` & `SearchQualityBenchmarkRunnerTest`: Controller routing, multi-cutoff evaluation (NDCG@3, NDCG@5, MRR, P@K, R@K).
+  - Frontend Node.js Test Suite (`searchModes.test.js`, `searchService.test.js`): Mode definitions, parameter serialization, and telemetry mapping.
 - **Phase 5 Query Intelligence & Experience (88 tests):**
   - `AutocompleteTrieTest`, `AutocompleteServiceTest`, `AutocompleteControllerTest`: Trie prefix traversal, min-heap Top-K, thread-safe atomic sync, REST validation.
   - `DamerauLevenshteinDistanceTest`, `SpellingCorrectionServiceTest`, `SpellingSuggestionControllerTest`: Edit distance matrices, adjacent transpositions, length-bucket candidate selection, multi-word spelling scan.
@@ -454,21 +517,23 @@ SearchForge includes **273 hermetic automated tests** across all subsystems:
 
 ### 1. Prerequisites
 - **Java 21 LTS** (Eclipse Temurin 21 recommended)
+- **Node.js 18+** (for React frontend)
 - **Docker & Docker Compose** (optional for PostgreSQL 16 container, or run zero-Docker via H2 `dev` profile)
 - **Maven Wrapper:** Included (`mvnw` / `mvnw.cmd`)
 
 ### Option A: Zero-Docker In-Memory Quickstart (Recommended for fast exploration)
-SearchForge includes an in-memory H2 development profile with pre-configured domain allowlists (`www.postgresql.org`, `docs.oracle.com`, `spring.io`).
+SearchForge includes an in-memory H2 development profile with 24 multi-domain encyclopedia documents auto-seeded on startup.
 
 ```bash
 cd backend
 
-# Run all 273 tests in-memory
+# Run all 408 backend tests in-memory
 ./mvnw test
 
 # Launch the server with the dev profile (H2 in-memory DB)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+*(On Windows PowerShell: `.\mvnw.cmd test` and `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"`)*.
 *(On Windows PowerShell: `.\mvnw.cmd test` and `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"`)*.
 
 ### Option B: Production Docker Compose Setup (PostgreSQL 16)
@@ -516,7 +581,8 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, and Phase 7 |
+| **[`docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md`](docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md)** | Complete guide to Dense Semantic Retrieval, ONNX Runtime inference, WordPiece tokenizer, and RRF Hybrid Search |
 | **[`docs/phases/PHASE_6_FRONTEND_APPLICATION.md`](docs/phases/PHASE_6_FRONTEND_APPLICATION.md)** | Complete guide to React + Vite frontend application, design system, and ranking transparency |
 | **[`docs/PHASE_6_COMPLETE_GUIDE.md`](docs/PHASE_6_COMPLETE_GUIDE.md)** | Masterclass index and reference guide for Phase 6 Web Application |
 | **[`docs/phases/PHASE_5_QUERY_INTELLIGENCE.md`](docs/phases/PHASE_5_QUERY_INTELLIGENCE.md)** | Complete guide to Trie autocomplete, spelling correction, sliding snippets, and synonyms |

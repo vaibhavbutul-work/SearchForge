@@ -4,8 +4,10 @@ import com.searchforge.crawler.model.CrawledDocument;
 import com.searchforge.crawler.repository.CrawledDocumentRepository;
 import com.searchforge.indexer.service.CorpusSyncResult;
 import com.searchforge.indexer.service.IndexingEngine;
+import com.searchforge.semantic.retrieval.DocumentEmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -31,17 +33,24 @@ public class DevDataLoader implements CommandLineRunner {
 
     private final CrawledDocumentRepository crawledDocumentRepository;
     private final IndexingEngine indexingEngine;
+    private final DocumentEmbeddingService documentEmbeddingService;
 
+    @Autowired
     public DevDataLoader(CrawledDocumentRepository crawledDocumentRepository,
-                         IndexingEngine indexingEngine) {
+                         IndexingEngine indexingEngine,
+                         @Autowired(required = false) DocumentEmbeddingService documentEmbeddingService) {
         this.crawledDocumentRepository = crawledDocumentRepository;
         this.indexingEngine = indexingEngine;
+        this.documentEmbeddingService = documentEmbeddingService;
     }
 
     @Override
     public void run(String... args) {
         if (crawledDocumentRepository.count() > 0) {
             log.info("Dev database already seeded. Skipping sample corpus insertion.");
+            if (documentEmbeddingService != null) {
+                documentEmbeddingService.warmupStorageFromDatabase();
+            }
             return;
         }
 
@@ -318,11 +327,17 @@ public class DevDataLoader implements CommandLineRunner {
         crawledDocumentRepository.saveAll(sampleDocs);
         CorpusSyncResult syncResult = indexingEngine.synchronizeCorpus(100);
 
+        int embeddingsCreated = 0;
+        if (documentEmbeddingService != null) {
+            embeddingsCreated = documentEmbeddingService.syncCorpusEmbeddings(100);
+        }
+
         log.info("==================================================================");
         log.info("✅ Multi-domain dev corpus seeding complete!");
-        log.info("   Indexed documents : {}", syncResult.documentsIndexed());
-        log.info("   Tokens indexed    : {}", syncResult.totalTokensIndexed());
-        log.info("   Try querying now  : 'dog', 'bottle', 'chair', 'book', 'galaxy'");
+        log.info("   Indexed documents  : {}", syncResult.documentsIndexed());
+        log.info("   Tokens indexed     : {}", syncResult.totalTokensIndexed());
+        log.info("   Embeddings indexed : {}", embeddingsCreated);
+        log.info("   Try querying now   : 'dog', 'bottle', 'chair', 'book', 'galaxy'");
         log.info("==================================================================");
     }
 }

@@ -5,6 +5,7 @@ import styles from './SearchResultItem.module.css';
 export default function SearchResultItem({
   result,
   rank = 1,
+  mode = 'hybrid',
   onExplain,
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -12,6 +13,7 @@ export default function SearchResultItem({
 
   const {
     docId,
+    documentId,
     title = 'Untitled Document',
     url = '#',
     snippet = '',
@@ -20,7 +22,14 @@ export default function SearchResultItem({
     domain = '',
     explanation = null,
     matchedTerms = [],
+    bm25Score = null,
+    semanticScore = null,
+    bm25Rank = null,
+    semanticRank = null,
+    rrfScore = null,
   } = result || {};
+
+  const effectiveId = docId ?? documentId;
 
   // Extract clean breadcrumb from URL if domain is not provided
   let displayDomain = domain;
@@ -89,20 +98,42 @@ export default function SearchResultItem({
 
       <div className={styles.metadataBar}>
         <span className={styles.rankBadge}>#{rank}</span>
-        {score !== null && score !== undefined && (
-          <span className={styles.scoreBadge}>
+
+        {/* Multi-Modal Hybrid Badges */}
+        {rrfScore != null && (
+          <span className={styles.rrfBadge} title="Reciprocal Rank Fusion Combined Score">
+            RRF: {typeof rrfScore === 'number' ? rrfScore.toFixed(4) : rrfScore}
+          </span>
+        )}
+
+        {bm25Score != null && (
+          <span className={styles.bm25Badge} title={`BM25 Lexical Score (Rank #${bm25Rank || '-'})`}>
+            BM25: {typeof bm25Score === 'number' ? bm25Score.toFixed(2) : bm25Score} {bm25Rank ? `(#${bm25Rank})` : ''}
+          </span>
+        )}
+
+        {semanticScore != null && (
+          <span className={styles.semanticBadge} title={`Dense Vector Cosine Similarity (Rank #${semanticRank || '-'})`}>
+            Vector: {typeof semanticScore === 'number' ? `${(semanticScore * 100).toFixed(1)}%` : semanticScore} {semanticRank ? `(#${semanticRank})` : ''}
+          </span>
+        )}
+
+        {/* Fallback Score Badge for pure lexical/single-mode when sub-scores are not returned */}
+        {rrfScore == null && bm25Score == null && semanticScore == null && score != null && (
+          <span className={styles.scoreBadge} title="Relevance Score">
             Score: {typeof score === 'number' ? score.toFixed(4) : score}
           </span>
         )}
+
         <button
           type="button"
           className={styles.explainButton}
           onClick={handleToggleExplain}
           aria-expanded={isExpanded}
-          aria-controls={`explain-panel-${docId}`}
-          title="Inspect BM25 relevance score breakdown"
+          aria-controls={`explain-panel-${effectiveId}`}
+          title="Inspect relevance ranking decomposition"
         >
-          {isExpanded ? 'Hide explanation ▴' : 'Why this result? ▾'}
+          {isExpanded ? 'Hide ranking breakdown ▴' : 'Why this result? ▾'}
         </button>
       </div>
 
@@ -111,8 +142,13 @@ export default function SearchResultItem({
           explanation={explanation}
           score={score}
           rank={rank}
-          docId={docId}
+          docId={effectiveId}
           matchedTerms={matchedTerms}
+          bm25Score={bm25Score}
+          semanticScore={semanticScore}
+          bm25Rank={bm25Rank}
+          semanticRank={semanticRank}
+          rrfScore={rrfScore}
         />
       )}
     </article>

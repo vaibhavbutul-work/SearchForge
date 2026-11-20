@@ -6,6 +6,21 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] - Phase 7: Hybrid Search & Dense Semantic Retrieval (2026-11-20)
+
+### Added
+- **Local Dense Semantic Retrieval via ONNX Runtime:** Integrated `all-MiniLM-L6-v2` dense embedding model running locally on CPU in pure Java with Microsoft ONNX Runtime Java bindings. Zero external vector databases, zero paid APIs.
+- **Authentic WordPiece Tokenizer (`vocab.txt`):** Built a zero-dependency BERT-compatible WordPiece tokenizer in Java with 30,522-token vocabulary support, lowercase normalization, punctuation separation, greedy longest-match subword segmentation, and special tokens (`[PAD]=0`, `[UNK]=100`, `[CLS]=101`, `[SEP]=102`, `[MASK]=103`).
+- **Dynamic Sequence Length Tensor Allocation:** Replaced static 256-token allocation with dynamic sequence length tensor shapes `[batchSize, actualSequenceLength]`, reducing warmed-up ONNX CPU inference from 625.44 ms to **2.36 ms (265x–336x speedup)**.
+- **Attention-Weighted Mean Pooling & L2 Normalization:** Implements mathematical mean pooling masked by active token attention flags ($v = \sum h_i m_i / \sum m_i$) followed by L2 unit normalization, guaranteeing dot-product equality with cosine similarity.
+- **Reciprocal Rank Fusion (RRF) Hybrid Search:** Blends lexical BM25 ranking and dense semantic ranking into a unified hybrid score using $RRF(d) = \sum \frac{1}{60 + r_i(d)}$. Achieves superior relevance (+4.8% NDCG@3 vs BM25).
+- **Thread-Safe Bounded Query Embedding Cache:** Implemented `QueryEmbeddingCache` with LRU eviction policy, query text normalization, defensive array cloning, and real-time hit/miss metrics, enabling $< 0.1\text{ ms}$ retrieval for repeat queries.
+- **Multi-Modal SERP UI Integration:** Added Semantic and Hybrid modes to the React 18 / Vite frontend, featuring hybrid score badges, individual lexical and semantic rank breakdowns, and fallback telemetry.
+- **Expanded Benchmark Dataset & Multi-Cutoff Evaluation:** 120 synthetic documents across 10 domains with 35 distractor documents and 40 categorized queries, evaluated on NDCG@3, NDCG@5, MRR, Precision@K, and Recall@K.
+- **Comprehensive Test Suite Expansion:** Added 135 new automated tests across backend and frontend, bringing total passing tests to **421 (408 backend + 13 frontend)** with 100% pass rate.
+
+---
+
 ## [1.2.0] - Phase 6: Complete Frontend Web Application (2026-11-20)
 
 ### Added

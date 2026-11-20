@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { SEARCH_MODES, resolveSearchMode } from './searchModes.js';
 import styles from './SearchModeSelector.module.css';
 
-export const SEARCH_MODES = [
-  { id: 'ranked', label: 'Ranked BM25' },
-  { id: 'boolean', label: 'Boolean AST (AND/OR/NOT)' },
-  { id: 'filtered', label: 'Filtered Search' },
-];
+export { SEARCH_MODES, resolveSearchMode };
 
 export default function SearchModeSelector({
-  currentMode = 'ranked',
+  currentMode = 'hybrid',
   currentFilter = '',
   onModeChange,
   onFilterChange,
 }) {
   const [filterText, setFilterText] = useState(currentFilter || '');
+
+  // Normalize legacy 'ranked' alias to 'lexical'
+  const normalizedMode = currentMode === 'ranked' ? 'lexical' : currentMode;
 
   useEffect(() => {
     setFilterText(currentFilter || '');
@@ -33,8 +33,10 @@ export default function SearchModeSelector({
     }
   };
 
+  const activeModeObj = SEARCH_MODES.find((m) => m.id === normalizedMode) || SEARCH_MODES[0];
+
   return (
-    <div>
+    <div className={styles.wrapper}>
       <div className={styles.selectorContainer}>
         <label htmlFor="search-mode-select" className={styles.selectorLabel}>
           Mode:
@@ -42,7 +44,7 @@ export default function SearchModeSelector({
         <select
           id="search-mode-select"
           className={styles.modeSelect}
-          value={currentMode}
+          value={normalizedMode}
           onChange={handleSelectChange}
           aria-label="Select search retrieval mode"
         >
@@ -52,9 +54,16 @@ export default function SearchModeSelector({
             </option>
           ))}
         </select>
+        <span className={styles.modeBadge} title={activeModeObj.description}>
+          {activeModeObj.badge}
+        </span>
       </div>
 
-      {currentMode === 'filtered' && (
+      <div className={styles.modeDescription} title={activeModeObj.description}>
+        {activeModeObj.description}
+      </div>
+
+      {normalizedMode === 'filtered' && (
         <form onSubmit={handleFilterSubmit} className={styles.filterInputContainer}>
           <label htmlFor="boolean-filter-input" className={styles.filterLabel}>
             Filter (AST):

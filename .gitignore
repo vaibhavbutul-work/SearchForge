@@ -43,3 +43,8 @@ desktop.ini
 frontend/node_modules/
 frontend/dist/
 
+# Model binaries (store externally or download on demand)
+*.onnx
+*.bin
+
+

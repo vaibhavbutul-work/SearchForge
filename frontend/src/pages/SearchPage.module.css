@@ -17,7 +17,41 @@
   margin-top: var(--space-4);
 }
 
-/* Development Preview Toolbar for Task 3 Verification */
+/* Fallback Degradation Banner for Task 6D */
+.fallbackBanner {
+  background-color: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-left: 4px solid #D97706;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: #92400E;
+}
+
+.fallbackIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.fallbackContent strong {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.fallbackContent p {
+  margin: 0;
+  line-height: 1.4;
+  color: #78350F;
+}
+
+/* Development Preview Toolbar */
 .previewToolbar {
   background-color: #FFFBEB;
   border: 1px solid #FDE68A;

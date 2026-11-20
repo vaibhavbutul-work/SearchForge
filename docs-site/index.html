@@ -19,7 +19,7 @@
       <div class="logo-badge">SF</div>
       <div class="logo-text">
         <h1>SearchForge</h1>
-        <span>Engine v1.0 • Java 21</span>
+        <span>Engine v1.3 • Java 21 • Hybrid Search</span>
       </div>
     </div>
 
@@ -83,7 +83,7 @@
     <header class="top-bar">
       <div class="search-status-pill">
         <span class="pulse-dot"></span>
-        <span>273 Tests Passing • 100% Hermetic</span>
+        <span>421 Tests Passing (408 Backend + 13 Frontend) • 100% Hermetic</span>
       </div>
       <div class="quick-links">
         <a href="https://github.com/vaibhavbutul-work/SearchForge" target="_blank" class="btn btn-secondary">
@@ -103,30 +103,30 @@
           Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
         </h1>
         <p class="hero-description">
-          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), and <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval, and zero external UI bloat).
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), and <strong>Phase 7 Hybrid Search & Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]).
         </p>
 
         <!-- Metrics Cards -->
         <div id="metrics" class="metrics-grid">
           <div class="metric-card">
             <div class="metric-label">Automated Tests</div>
-            <div class="metric-value" style="color: var(--accent-emerald);">273 / 273</div>
-            <div class="metric-sub">100% Hermetic Passing</div>
+            <div class="metric-value" style="color: var(--accent-emerald);">421 Passing</div>
+            <div class="metric-sub">408 Backend + 13 Frontend (100%)</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Live Tokens Indexed</div>
-            <div class="metric-value" style="color: var(--accent-cyan);">21,406</div>
-            <div class="metric-sub">16 Real Web Pages Crawled</div>
+            <div class="metric-label">Hybrid Latency</div>
+            <div class="metric-value" style="color: var(--accent-cyan);">&lt; 2.5 ms</div>
+            <div class="metric-sub">End-to-End ONNX + BM25</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Inverted Postings</div>
-            <div class="metric-value" style="color: var(--accent-indigo);">4,526</div>
-            <div class="metric-sub">1,999 Stemmed Terms</div>
+            <div class="metric-label">Model & Vectors</div>
+            <div class="metric-value" style="color: var(--accent-indigo);">384 Dims</div>
+            <div class="metric-sub">all-MiniLM-L6-v2 ONNX</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">Relevance Quality</div>
-            <div class="metric-value" style="color: var(--accent-amber);">1.000 MRR</div>
-            <div class="metric-sub">NDCG@5: 0.980 • &lt; 1 ms</div>
+            <div class="metric-value" style="color: var(--accent-amber);">0.908 MRR</div>
+            <div class="metric-sub">NDCG@5: 0.879 (Hybrid RRF)</div>
           </div>
         </div>
       </section>
@@ -468,8 +468,14 @@
               <tr>
                 <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
                 <td style="font-family: monospace; color: #fff;">/api/v1/search</td>
-                <td>Free-text BM25 search with spellcheck, synonyms & snippets</td>
-                <td><code>q</code>, <code>limit=10</code>, <code>explain=true</code></td>
+                <td>Multi-modal search: Hybrid RRF (default), Dense Semantic, or Lexical BM25</td>
+                <td><code>q</code>, <code>mode=hybrid|semantic|lexical</code>, <code>limit=10</code>, <code>explain=true</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/search/semantic</td>
+                <td>Direct dense semantic vector retrieval via ONNX embeddings</td>
+                <td><code>q</code>, <code>limit=10</code></td>
               </tr>
               <tr>
                 <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
@@ -561,9 +567,14 @@ docker compose up -d
 cd backend
 .\mvnw.cmd spring-boot:run</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 273 Hermetic Tests</h3>
-          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;">cd backend
-.\mvnw.cmd test</code></pre>
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 421 Automated Tests (408 Backend + 13 Frontend)</h3>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 408 Backend Tests
+cd backend
+.\mvnw.cmd test
+
+# Run 13 Frontend Tests
+cd ../frontend
+npm test</code></pre>
         </div>
       </section>
 

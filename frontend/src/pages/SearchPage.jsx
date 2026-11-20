@@ -19,7 +19,9 @@ export default function SearchPage() {
 
   // URL search parameters (Persistence & Shareability)
   const query = searchParams.get('q') || '';
-  const mode = searchParams.get('mode') || 'ranked';
+  const rawMode = searchParams.get('mode') || 'hybrid';
+  // Normalize legacy 'ranked' alias to 'lexical'
+  const mode = rawMode === 'ranked' ? 'lexical' : rawMode;
   const filter = searchParams.get('filter') || '';
   const limit = parseInt(searchParams.get('limit') || '10', 10);
 
@@ -27,6 +29,9 @@ export default function SearchPage() {
   const [searchData, setSearchData] = useState({
     totalHits: 0,
     executionTimeMs: 0,
+    mode: 'hybrid',
+    fallback: false,
+    fallbackReason: null,
     didYouMean: null,
     results: [],
   });
@@ -39,7 +44,7 @@ export default function SearchPage() {
     if (newQuery && newQuery.trim()) {
       params.set('q', newQuery.trim());
     }
-    if (newMode && newMode !== 'ranked') {
+    if (newMode && newMode !== 'hybrid') {
       params.set('mode', newMode);
     }
     if (newMode === 'filtered' && newFilter && newFilter.trim()) {
@@ -60,6 +65,9 @@ export default function SearchPage() {
       setSearchData({
         totalHits: 0,
         executionTimeMs: 0,
+        mode: searchMode,
+        fallback: false,
+        fallbackReason: null,
         didYouMean: null,
         results: [],
       });
@@ -91,6 +99,9 @@ export default function SearchPage() {
       setSearchData({
         totalHits: response.totalHits,
         executionTimeMs: response.executionTimeMs,
+        mode: response.mode,
+        fallback: response.fallback,
+        fallbackReason: response.fallbackReason,
         didYouMean: response.didYouMean,
         results: response.results,
       });
@@ -125,7 +136,8 @@ export default function SearchPage() {
     updateUrlParams(suggestedQuery, mode, filter, limit);
   };
 
-  const modeLabel = SEARCH_MODES.find((m) => m.id === mode)?.label || 'Ranked BM25';
+  const activeModeObj = SEARCH_MODES.find((m) => m.id === mode) || SEARCH_MODES[0];
+  const modeLabel = activeModeObj.label;
 
   return (
     <div className={styles.pageContainer}>
@@ -158,6 +170,19 @@ export default function SearchPage() {
           </div>
         </div>
 
+        {/* Fallback Graceful Degradation Banner */}
+        {searchData.fallback && (
+          <div className={styles.fallbackBanner} role="alert">
+            <span className={styles.fallbackIcon}>⚠️</span>
+            <div className={styles.fallbackContent}>
+              <strong>Notice: Automatic Fallback to Lexical Search</strong>
+              <p>
+                {searchData.fallbackReason || 'Dense semantic retrieval was temporarily unavailable; results were gracefully retrieved using lexical BM25 search.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Loading Skeleton */}
         {isLoading && (
           <div className={styles.resultsArea}>
@@ -183,6 +208,7 @@ export default function SearchPage() {
             ) : (
               <SearchResultsList
                 results={searchData.results}
+                mode={mode}
               />
             )}
           </div>
@@ -195,7 +221,7 @@ export default function SearchPage() {
               Please enter a search query in the header above or press <kbd style={{ padding: '2px 5px', border: '1px solid var(--color-border)', borderRadius: '3px', background: 'var(--color-surface)', fontFamily: 'var(--font-mono)' }}>/</kbd> to focus.
             </p>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-              Selected Mode: <strong>{modeLabel}</strong> &bull; Or return to the <a href="/">homepage</a>.
+              Active Mode: <strong>{modeLabel}</strong> &bull; Or return to the <a href="/">homepage</a>.
             </p>
           </div>
         )}
