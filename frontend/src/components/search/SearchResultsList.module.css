@@ -1,0 +1,5 @@
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--search-results-width);
+}

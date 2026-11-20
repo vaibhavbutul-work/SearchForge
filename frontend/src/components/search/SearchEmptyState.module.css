@@ -1,0 +1,27 @@
+.emptyContainer {
+  max-width: var(--search-results-width);
+  padding: var(--space-6) 0;
+}
+
+.heading {
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-3);
+  font-weight: 500;
+}
+
+.queryText {
+  font-weight: 700;
+}
+
+.suggestionList {
+  list-style: disc;
+  padding-left: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+}
+
+.suggestionList li {
+  margin-bottom: var(--space-1);
+}

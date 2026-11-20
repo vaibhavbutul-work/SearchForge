@@ -1,0 +1,146 @@
+.resultItem {
+  margin-bottom: var(--space-6);
+  max-width: var(--search-results-width);
+  animation: resultItemFade 200ms ease;
+}
+
+@keyframes resultItemFade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resultItem {
+    animation: none;
+  }
+}
+
+.urlBreadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.copyBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.copyBtn:hover {
+  color: var(--color-accent);
+  background-color: var(--color-bg);
+}
+
+.faviconPlaceholder {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.domainText {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.pathText {
+  color: var(--color-text-secondary);
+}
+
+.title {
+  margin-bottom: var(--space-1);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.titleLink {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.titleLink:hover {
+  text-decoration: underline;
+  color: var(--color-accent-hover);
+}
+
+.snippet {
+  font-size: var(--text-sm);
+  color: #4D5156;
+  line-height: 1.55;
+  margin-bottom: var(--space-2);
+  word-wrap: break-word;
+}
+
+.snippet mark {
+  background-color: var(--color-accent-subtle);
+  color: var(--color-accent);
+  font-weight: 600;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.metadataBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.rankBadge {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.scoreBadge {
+  font-family: var(--font-mono);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1px var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.explainButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.explainButton:hover {
+  text-decoration: underline;
+}

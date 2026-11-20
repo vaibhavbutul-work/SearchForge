@@ -38,3 +38,8 @@ desktop.ini
 .env
 .env.local
 *.log
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+

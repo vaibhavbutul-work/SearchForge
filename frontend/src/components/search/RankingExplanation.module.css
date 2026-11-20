@@ -1,0 +1,123 @@
+.explanationPanel {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  animation: panelSlideDown 200ms ease;
+}
+
+@keyframes panelSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panelTitle {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.scoreSummary {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-bottom: var(--space-3);
+}
+
+.scoreTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 11px;
+}
+
+.scoreTable th {
+  padding: 6px var(--space-2);
+  background-color: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.scoreTable td {
+  padding: 6px var(--space-2);
+  border-bottom: 1px solid #F0F0EE;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.termCell {
+  font-weight: 600;
+  color: var(--color-accent) !important;
+}
+
+.phraseCell {
+  font-weight: 600;
+  color: #D97706 !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.phraseBadge {
+  font-size: 9px;
+  background-color: #FEF3C7;
+  color: #92400E;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.scoreCell {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.formulaNote {
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  font-size: 11px;
+}
+
+.formulaNote strong {
+  color: var(--color-text-primary);
+}
+
+.formulaMath {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+  display: block;
+  margin-top: 2px;
+}
