@@ -83,7 +83,7 @@
     <header class="top-bar">
       <div class="search-status-pill">
         <span class="pulse-dot"></span>
-        <span>185 Tests Passing • 100% Hermetic</span>
+        <span>273 Tests Passing • 100% Hermetic</span>
       </div>
       <div class="quick-links">
         <a href="https://github.com/vaibhavbutul-work/SearchForge" target="_blank" class="btn btn-secondary">
@@ -103,14 +103,14 @@
           Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
         </h1>
         <p class="hero-description">
-          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, and <strong>Okapi BM25 probabilistic relevance ranking</strong>.
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, and <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion).
         </p>
 
         <!-- Metrics Cards -->
         <div id="metrics" class="metrics-grid">
           <div class="metric-card">
             <div class="metric-label">Automated Tests</div>
-            <div class="metric-value" style="color: var(--accent-emerald);">185 / 185</div>
+            <div class="metric-value" style="color: var(--accent-emerald);">273 / 273</div>
             <div class="metric-sub">100% Hermetic Passing</div>
           </div>
           <div class="metric-card">
@@ -462,8 +462,20 @@
               <tr>
                 <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
                 <td style="font-family: monospace; color: #fff;">/api/v1/search</td>
-                <td>Free-text BM25 ranked search (Mode A)</td>
+                <td>Free-text BM25 search with spellcheck, synonyms & snippets</td>
                 <td><code>q</code>, <code>limit=10</code>, <code>explain=true</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/search/autocomplete</td>
+                <td>Real-time prefix autocomplete suggestions (Trie)</td>
+                <td><code>prefix</code>, <code>limit=5</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/search/suggest</td>
+                <td>Noisy Channel Damerau-Levenshtein spelling correction</td>
+                <td><code>q</code></td>
               </tr>
               <tr>
                 <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
@@ -534,7 +546,7 @@ docker compose up -d
 cd backend
 .\mvnw.cmd spring-boot:run</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option C: Run All 185 Hermetic Tests</h3>
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option C: Run All 273 Hermetic Tests</h3>
           <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;">cd backend
 .\mvnw.cmd test</code></pre>
         </div>

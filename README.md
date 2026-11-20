@@ -7,7 +7,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-185%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="185 Tests Passing"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-273%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="273 Tests Passing"></a>
   <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%201.000%20%7C%20NDCG@3%201.000-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
@@ -270,46 +270,80 @@ Evaluated against multi-intent benchmark queries with curated binary and graded 
 
 ---
 
+## 🧠 Query Intelligence & Search Experience (Phase 5)
+
+SearchForge elevates information retrieval beyond basic keyword matching through custom-built query intelligence algorithms:
+
+### 1. Weighted Trie Autocomplete
+* **Custom Trie Data Structure:** Thread-safe prefix tree backed by `ConcurrentHashMap` and lock-free atomic references (`AtomicReference<AutocompleteTrie>`).
+* **Deterministic Vocabulary Ranking:** Combines Corpus Term Frequency ($ctf$) and Document Frequency ($df$):
+  $$\text{Score}(t) = \ln(1 + \text{ctf}) \times \sqrt{\text{df}}$$
+* **Bounded Min-Heap Top-K Retrieval:** Traverses prefix subtrees and extracts top-$K$ candidates in $\mathcal{O}(L + M \log K)$ runtime without full subtree sorting.
+
+### 2. Spelling Correction & Query Suggestions
+* **Optimal String Alignment (OSA):** Evaluates insertions, deletions, substitutions, and adjacent transpositions via Damerau-Levenshtein distance with early-exit pruning at $\text{maxDistance} = 2$.
+* **Length-Bucket Candidate Pruning:** Indexes vocabulary into word-length buckets ($[L - 2, L + 2]$) to prune 90%+ of irrelevant comparisons.
+* **Noisy Channel Model:** Scores candidate corrections by trading off edit likelihood against corpus popularity:
+  $$P(C \mid T) \propto \text{ErrorWeight}(d) \times \left(\ln(1 + \text{ctf}) \times \sqrt{\text{df}} + 1.0\right)$$
+* **Vocabulary Invariance:** Known valid indexed terms are strictly protected from modification.
+
+### 3. Dynamic Sliding-Window Snippets & Term Highlighting
+* **Word-Boundary Windowing:** Snaps dynamically to complete linguistic words rather than raw character offsets.
+* **Density Relevance Scoring:** Evaluates candidate excerpts by reward density:
+  $$\text{Score} = 100 \cdot Q_{\text{unique}} + 10 \cdot Q_{\text{total}} + \frac{100}{1 + \text{Span}}$$
+* **Anti-XSS Sanitization:** Automatically escapes HTML entities (`&`, `<`, `>`, `"`, `'`) before injecting safe `<mark>` tags around matched query and synonym terms.
+
+### 4. Query Normalization & Synonym Expansion
+* **Directional Synonym Graphs:** Supports `ONE_WAY` (e.g. `k8s -> kubernetes`) and `BIDIRECTIONAL` (e.g. `db <-> database`) mappings with cycle and self-mapping guards.
+* **Weighted BM25 Retrieval:** Applies a tunable discount factor ($\delta = 0.5$) to expanded synonym terms:
+  $$\text{Score}(D) = \sum_{t \in Q_{\text{orig}}} 1.0 \times \text{BM25}(t, D) + \sum_{s \in Q_{\text{syn}}} \delta \times \text{BM25}(s, D)$$
+* **Operator & Phrase Safety:** Quoted phrases and Boolean queries (`AND`, `OR`, `NOT`) strictly bypass expansion to guarantee AST semantic integrity.
+
+### 5. Empirical Performance Benchmarks (500 Documents, 557 Unique Terms)
+Measured across 200 iterations with JIT warm-up on Java 21 LTS:
+
+| Component | Metric | Mean Latency | p50 Latency | p90 Latency | p99 Latency |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Autocomplete** | Top-K Prefix Lookup ($K=5$) | **1.29 µs** | 0.80 µs | 2.00 µs | 4.70 µs |
+| **Spelling** | Candidate Generation & Scoring | **71.52 µs** | 89.10 µs | 109.90 µs | 177.70 µs |
+| **Snippets** | Dynamic Windowing & Highlighting | **20.13 µs** | 19.40 µs | 31.70 µs | 76.70 µs |
+| **Baseline Search** | Raw BM25 Ranked Retrieval | **0.17 ms** | 0.15 ms | 0.23 ms | 0.44 ms |
+| **Enriched Search** | End-to-End Query Intelligence | **0.26 ms** | 0.23 ms | 0.39 ms | 0.59 ms |
+
+*Total query intelligence overhead is **under 90 microseconds**.*
+
+---
+
 ## 📡 REST API Reference
 
 ### 1. Relevance Search Engine (`/api/v1/search`)
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/search?q={query}&limit=10&explain={bool}` | Free-text BM25 ranked retrieval (Mode A) |
-| `GET` | `/api/v1/search/ranked-boolean?q={boolQuery}&limit=10` | Ranked Boolean search evaluating AST logic (Mode C) |
-| `GET` | `/api/v1/search/filtered?q={query}&filter={filter}` | Filtered ranked search restricted to Boolean filter (Mode B) |
+| `GET` | `/api/v1/search?q={query}&limit=10&explain={bool}` | Free-text BM25 search with spelling suggestions, synonyms, and dynamic snippets |
+| `GET` | `/api/v1/search/autocomplete?prefix={prefix}&limit=5` | Real-time prefix autocomplete suggestions ranked by popularity |
+| `GET` | `/api/v1/search/suggest?q={query}` | Damerau-Levenshtein spelling error detection and `didYouMean` suggestions |
+| `GET` | `/api/v1/search/ranked-boolean?q={boolQuery}&limit=10` | Ranked Boolean search evaluating AST logic with highlighted snippets |
+| `GET` | `/api/v1/search/filtered?q={query}&filter={filter}` | Filtered ranked search restricted to Boolean filter |
 
-#### Example Ranked Search Response (`200 OK`):
+#### Example Enriched Search Response (`200 OK`):
 ```json
 {
-  "query": "virtual threads loom",
+  "query": "postgreql btre",
+  "didYouMean": "postgresql btree",
   "totalHits": 1,
   "returnedHits": 1,
-  "executionTimeMs": 1,
+  "executionTimeMs": 2,
   "results": [
     {
-      "docId": 4,
-      "url": "https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html",
-      "title": "Virtual Threads - Oracle Help Center",
-      "domain": "docs.oracle.com",
-      "snippet": "Virtual threads are lightweight threads that dramatically reduce the effort of writing high-throughput concurrent applications...",
-      "score": 3.8941,
+      "docId": 1,
+      "url": "https://searchforge.dev/postgres-btree",
+      "title": "PostgreSQL B-Tree Indexes",
+      "domain": "searchforge.dev",
+      "snippet": "PostgreSQL uses a B-tree index for high-performance equality and range queries...",
+      "highlightedSnippet": "...<mark>PostgreSQL</mark> uses a <mark>B-tree</mark> index for high-performance equality and range queries...",
+      "score": 4.85,
       "rank": 1,
-      "matchedTerms": ["loom", "thread", "virtual"],
-      "explanation": {
-        "virtual": {
-          "rawTf": 18,
-          "idf": 1.2528,
-          "saturation": 1.9542,
-          "termScore": 2.4482
-        },
-        "thread": {
-          "rawTf": 32,
-          "idf": 0.6931,
-          "saturation": 2.0858,
-          "termScore": 1.4459
-        }
-      }
+      "matchedTerms": ["postgresql", "btree"]
     }
   ]
 }
@@ -335,26 +369,24 @@ Evaluated against multi-intent benchmark queries with curated binary and graded 
 
 ---
 
-## 🧪 Automated Testing Audit (185 Tests)
+## 🧪 Automated Testing Audit (273 Tests)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 185, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~22.5s)
+[INFO] Tests run: 273, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~18.7s)
 ```
 
-SearchForge includes **185 automated tests** across all subsystems:
-- **Phase 4 Scoring & Ranking (65 tests):**
-  - `Bm25IdfCalculatorTest` & `SmoothIdfCalculatorTest`: Exact RSJ and VSM values, strictly non-negative monotonicity.
-  - `TermFrequencyDampenerTest`: Sublinear logarithmic dampening and keyword stuffing prevention.
-  - `Bm25TermScorerTest` & `Bm25ConfigTest`: Asymptotic saturation ($k_1 + 1$), length penalty ($b$), binary presence matching ($k_1 = 0$).
-  - `Bm25ScorerTest` & `StatsModelTest`: Hand-calculated multi-term benchmarks, explainability maps, deterministic tie-breaking.
-  - `RankedRetrievalEngineTest`: End-to-end TAAT candidate generation, stemming, stop words, top-$K$ truncation.
-  - `RankedBooleanQueryEngineTest`: Hybrid Boolean retrieval with BM25 scoring and positional phrase boosts.
-  - `SearchControllerTest`: MockMvc web slice tests for `/api/v1/search/*`, validation, and explainability payloads.
-  - `RelevanceMetricsCalculatorTest`: Hand-calculated NDCG@3 ($0.7967$), perfect ranking ($1.0$), inverted penalties, MRR.
-  - `RelevanceEvaluationRunnerTest`: Multi-domain benchmark evaluation achieving $\text{NDCG@5} \ge 0.85$ and $\text{MRR} \ge 0.90$.
-  - `RankedRetrievalPerformanceTest`: Latency benchmarks under load ($< 15\text{ ms}$ for 200 documents).
+SearchForge includes **273 hermetic automated tests** across all subsystems:
+- **Phase 5 Query Intelligence & Experience (88 tests):**
+  - `AutocompleteTrieTest`, `AutocompleteServiceTest`, `AutocompleteControllerTest`: Trie prefix traversal, min-heap Top-K, thread-safe atomic sync, REST validation.
+  - `DamerauLevenshteinDistanceTest`, `SpellingCorrectionServiceTest`, `SpellingSuggestionControllerTest`: Edit distance matrices, adjacent transpositions, length-bucket candidate selection, multi-word spelling scan.
+  - `HtmlSanitizerTest`, `WindowRelevanceScorerTest`, `SnippetGeneratorServiceTest`: Word-boundary snapping, query density scoring, XSS entity escaping, `<mark>` tag injection.
+  - `InMemorySynonymDictionaryTest`, `SynonymExpansionServiceTest`: Bidirectional and one-way synonym expansion, cycle suppression, stop-word pruning.
+  - `SearchIntelligenceIntegrationTest`: Enriched search responses, `didYouMean` suggestions, highlighted snippets, Boolean AST preservation, zero-hit handling.
+  - `DefaultRankedRetrievalEngineSynonymTest`: Weighted BM25 scoring with discounted synonyms ($w_t = 0.5$).
+  - `QueryIntelligenceBenchmarkTest` & `QueryIntelligenceRelevanceEvaluationTest`: Latency percentile benchmarks and IR relevance verification.
+- **Phase 4 Scoring & Ranking (65 tests):** BM25 term scorer, RSJ IDF, length normalization ($b$), term saturation ($k_1$), TAAT retrieval, NDCG@K, MRR, P@K, R@K.
 - **Phase 3 Indexing & Boolean Retrieval (58 tests):** Tokenizer, Porter stemmer, inverted index, positional phrase search, JPA persistence, recursive-descent parser, two-pointer mergers.
 - **Phase 1 & 2 Foundation & Crawler (62 tests):** Virtual thread concurrency, BFS frontier, RFC 3986 normalizer, RFC 9309 robots parser, WireMock integration tests.
 
