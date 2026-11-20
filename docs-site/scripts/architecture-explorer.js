@@ -80,6 +80,22 @@ const ARCH_SUBSYSTEMS = {
     inputs: "HTTP GET/POST requests with JSON payloads and query parameters",
     outputs: "JSON responses with term explainability breakdowns",
     patterns: "Controller-Service-Repository, RESTful Resource Modeling"
+  },
+  "frontend": {
+    name: "React 18 / Vite 6 Web Application",
+    package: "frontend/src (React 18, React Router v6, Vite 6)",
+    responsibility: "Delivers a fast search experience with live query persistence, BM25 score transparency, search mode dispatching, and WCAG AA accessibility.",
+    classes: [
+      "HomePage: Clean search portal with curiosity chips & auto-focus",
+      "SearchPage: Full SERP coordinator managing query lifecycle & Top-K",
+      "SearchResultItem: Domain breadcrumbs, highlighted snippets & copy link",
+      "RankingExplanation: Inline BM25 score breakdown drawer (TF, RSJ IDF, S(tf))",
+      "SearchModeSelector: Mode A (BM25), Mode B (Boolean AST), Mode C (Filtered)",
+      "useSearchHistory & useGlobalShortcuts: Keyboard '/' hotkey & localStorage history"
+    ],
+    inputs: "User keystrokes, URL search params (?q=...&mode=...&limit=...)",
+    outputs: "Real-time interactive SERP, math score breakdowns, accessible DOM",
+    patterns: "Component-Driven Architecture, Custom Hooks, Reactive URL State Synchronization"
   }
 };
 

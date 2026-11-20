@@ -103,7 +103,7 @@
           Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
         </h1>
         <p class="hero-description">
-          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, and <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion).
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), and <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval, and zero external UI bloat).
         </p>
 
         <!-- Metrics Cards -->
@@ -149,7 +149,7 @@
               <button id="pipelineRestartBtn" class="btn btn-secondary">↺ Restart</button>
             </div>
             <div class="speed-control">
-              <span id="currentStageBadge" class="pipeline-step-badge">Stage 1 / 12: Web Sources</span>
+              <span id="currentStageBadge" class="pipeline-step-badge">Stage 1 / 13: Web Sources</span>
               <select id="pipelineSpeedSelect" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
                 <option value="2500">Speed: 0.5x</option>
                 <option value="1800" selected>Speed: 1x</option>
@@ -407,6 +407,12 @@
             <h3>REST API & Telemetry</h3>
             <p>SearchController with explainability, IndexController, CrawlerController, Spring Actuator.</p>
           </div>
+
+          <div class="arch-card" data-subsystem="frontend">
+            <div class="arch-icon">💻</div>
+            <h3>Frontend Web Application</h3>
+            <p>React 18 / Vite 6 SERP with live snippets, BM25 score transparency, mode switching, and WCAG AA accessibility.</p>
+          </div>
         </div>
 
         <!-- Architecture Detail Modal -->
@@ -534,11 +540,20 @@
 
         <div class="pipeline-card" style="background-color: var(--bg-secondary);">
           <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">Option A: Zero-Docker Instant Dev Runner (Recommended)</h3>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Uses an in-memory PostgreSQL-compatible H2 database with 6 sample technical documents auto-seeded on startup.</p>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Uses an in-memory PostgreSQL-compatible H2 database with 24 multi-domain encyclopedia documents auto-seeded on startup.</p>
           <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px;"><code style="color: #38bdf8;">cd backend
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option B: Persistent PostgreSQL 16 Docker Mode</h3>
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-emerald); margin-bottom: 8px;">Option B: Full-Stack Web App (Backend + React Frontend)</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Launch both the Java 21 Spring Boot search engine and the interactive Vite 6 React SERP UI.</p>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px;"><code style="color: #38bdf8;"># Terminal 1: Backend (Port 8080)
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+
+# Terminal 2: Frontend (Port 5173)
+cd frontend
+npm run dev</code></pre>
+
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option C: Persistent PostgreSQL 16 Docker Mode</h3>
           <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px;"><code style="color: #38bdf8;"># 1. Start PostgreSQL 16 Container
 docker compose up -d
 
@@ -546,7 +561,7 @@ docker compose up -d
 cd backend
 .\mvnw.cmd spring-boot:run</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option C: Run All 273 Hermetic Tests</h3>
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 273 Hermetic Tests</h3>
           <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;">cd backend
 .\mvnw.cmd test</code></pre>
         </div>

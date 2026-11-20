@@ -157,6 +157,17 @@ flowchart TD
         Sanitizer --> SearchResult["Enriched Ranked Response (JSON)"]
         DidYouMean -.-> SearchResult
     end
+
+    subgraph FrontendApp["6. Frontend Web Application (React 18 + Vite 6)"]
+        SearchResult --> ApiClient["Centralized ApiClient (CORS & Timeout Guard)"]
+        ApiClient --> SearchPage["SearchPage SERP Coordinator"]
+        SearchPage --> ResultItem["SearchResultItem (Domain, Snippet, Copy)"]
+        ResultItem --> WhyResult["RankingExplanation ('Why this result? ▾')"]
+        WhyResult --> MathExplain["BM25 Decomposition (TF, RSJ IDF, Saturation, Boost)"]
+        SearchPage --> ModeSelector["SearchModeSelector (Ranked BM25, Boolean AST, Filtered)"]
+        SearchPage --> TopKSelector["TopKSelector (5, 10, 20, 50 Bounded Heap)"]
+        SearchPage --> SearchHist["useSearchHistory & useGlobalShortcuts ('/' Hotkey)"]
+    end
 ```
 
 ---
@@ -213,6 +224,12 @@ A complete, thread-safe implementation of Martin Porter's 1980 morphological red
   - Configurable directional mappings (`ONE_WAY` vs. `BIDIRECTIONAL`) with loop prevention and self-mapping elimination.
   - Applies a discounted multiplier ($\delta = 0.5$) during BM25 score accumulation.
   - Strictly preserves Boolean operators (`AND`, `OR`, `NOT`) and quoted phrases without expansion to maintain AST semantics.
+
+### 6. Frontend Web Application (`frontend/`)
+* **Modern React & Vite Architecture:** Component-driven React 18, React Router v6, Vite 6, and a zero-dependency CSS custom properties design system with dark/light variables.
+* **Ranking Transparency ("Why this result?"):** Interactive inline drawer deconstructing Robertson-Spärck Jones BM25 scores into raw $tf$, RSJ IDF, sublinear saturation factor $S(tf)$, and exact positional phrase boosts directly from backend `TermExplanation` DTOs.
+* **Multi-Mode Engine Dispatcher:** Dynamic selector dispatching across all three backend retrieval engines: Ranked BM25 (`mode=ranked`), Boolean AST (`mode=boolean`), and Filtered Search with secondary inline filter inputs (`mode=filtered`).
+* **UX & Accessibility Polish:** Global keyboard navigation (`/` jump-to-search, `Escape` blur/clear), instant one-click link copying with toast feedback, `localStorage` search history, accessible skip links, and WCAG AA contrast (5.1:1+).
 
 ---
 
@@ -469,6 +486,21 @@ cd backend
 
 The search engine server will start on port `8080`.
 
+### Option C: Full-Stack Web Application (Spring Boot + React/Vite)
+Run both the Spring Boot backend and the React frontend to launch the complete interactive search engine web application:
+
+```bash
+# Terminal 1: Launch Backend on Port 8080
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+
+# Terminal 2: Launch Frontend on Port 5173
+cd frontend
+npm install
+npm run dev
+# Open http://localhost:5173 in your browser
+```
+
 ---
 
 ## 📚 Technical Documentation Hub
@@ -484,7 +516,9 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6 |
+| **[`docs/phases/PHASE_6_FRONTEND_APPLICATION.md`](docs/phases/PHASE_6_FRONTEND_APPLICATION.md)** | Complete guide to React + Vite frontend application, design system, and ranking transparency |
+| **[`docs/PHASE_6_COMPLETE_GUIDE.md`](docs/PHASE_6_COMPLETE_GUIDE.md)** | Masterclass index and reference guide for Phase 6 Web Application |
 | **[`docs/phases/PHASE_5_QUERY_INTELLIGENCE.md`](docs/phases/PHASE_5_QUERY_INTELLIGENCE.md)** | Complete guide to Trie autocomplete, spelling correction, sliding snippets, and synonyms |
 | **[`docs/PHASE_5_COMPLETE_GUIDE.md`](docs/PHASE_5_COMPLETE_GUIDE.md)** | Comprehensive index and technical reference for Phase 5 Query Intelligence |
 
@@ -495,7 +529,7 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 - **[CONTRIBUTING.md](CONTRIBUTING.md):** Guidelines for code style, branching, pull requests, and test expectations.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Contributor standards and inclusive community pledges.
 - **[SECURITY.md](SECURITY.md):** Vulnerability reporting and disclosure protocols.
-- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5.
+- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6.
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml):** Automated GitHub Actions CI workflow running Java 21 test suites on every pull request.
 - **[.github/workflows/pages.yml](.github/workflows/pages.yml):** Automated GitHub Pages deployment workflow for the interactive `docs-site/`.
 

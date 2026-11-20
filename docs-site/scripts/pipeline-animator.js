@@ -111,6 +111,15 @@ const PIPELINE_STAGES = [
     summary: "Accumulates top-K highest scoring documents using a Min-Heap priority queue in O(C log K) time and returns JSON response.",
     input: "Top 3 Scored Candidates",
     output: "Rank 1: Doc 7 (Score: 4.2694) | Rank 2: Doc 12 (Score: 4.0915) [< 1 ms]"
+  },
+  {
+    id: 13,
+    name: "Frontend SERP & Transparency",
+    badge: "React 18 / Vite 6 Web App",
+    classes: "SearchPage, SearchResultItem, RankingExplanation",
+    summary: "Renders real-time search results with highlighted snippets, mode selector, and expandable mathematical BM25 score transparency drawer.",
+    input: "SearchResponseDTO from /api/v1/search (Top-K documents with TermExplanation)",
+    output: "Interactive web SERP with 'Why this result? ▾' breakdown and zero external UI bloat"
   }
 ];
 
@@ -153,7 +162,7 @@ class PipelineAnimator {
       node.className = `stage-node ${idx === 0 ? "active" : ""}`;
       node.dataset.index = idx;
       node.innerHTML = `
-        <span class="stage-num">0${stage.id}</span>
+        <span class="stage-num">${stage.id < 10 ? '0' + stage.id : stage.id}</span>
         <span class="stage-name">${stage.name}</span>
         <span class="stage-desc-short">${stage.badge}</span>
       `;

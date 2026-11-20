@@ -6,6 +6,23 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] - Phase 6: Complete Frontend Web Application (2026-11-20)
+
+### Added
+- **Modern React + Vite Frontend Application:** Standalone, decoupled web application in `frontend/` powered by React 18, React Router v6, Vite, and modern CSS modules.
+- **Hybrid Search Engine UI:** Minimalist, focused homepage with brand wordmark, tagline ("Search. Understand. Discover."), responsive search bar, and example query chips (`Java virtual threads`, `Spring Boot dependency injection`, `PostgreSQL indexing`, `b-tree indexes`).
+- **Comprehensive Search Results Interface:** Search results page (SERP) featuring domain breadcrumbs, accessible titles, highlighted snippets with `<mark>` tags, rank badges, BM25 scores, and sticky navigation header.
+- **Direct Backend Integration & CORS Configuration:** Centralized `apiClient.js` and `searchService.js` connecting directly to Spring Boot backend (`http://localhost:8080`) with zero mock data. Added secure, restricted CORS configuration (`WebConfig.java`) for local origins.
+- **Multi-Modal Retrieval Selector:** Compact mode selector exposing native backend retrieval engines: Mode A (Free-Text BM25), Mode B (Boolean AST `AND`/`OR`/`NOT`), and Mode C (Filtered Search with inline secondary filter input).
+- **Ranking Transparency ("Why this result?"):** Interactive expandable explainability drawer deconstructing Robertson-Spärck Jones BM25 scores into raw TF, RSJ IDF, sublinear saturation factor $S(tf)$, and exact positional phrase boosts directly from backend's `TermExplanation` DTO.
+- **Local Search History & Keyboard Shortcuts:** Browser `localStorage` search history (deduplicated, capped at 8, clearable), global `/` shortcut to focus search input with input typing protection, and `Escape` dismissal.
+- **Top-K Limit Selector & Full URL Query Persistence:** Results-per-page selector (5, 10, 20, 50) directly controlling backend's bounded min-heap limit, with full URL parameter serialization (`/search?q=...&mode=...&limit=...`) ensuring 100% shareable and reloadable state.
+- **Multi-Domain Encyclopedia Dev Corpus:** Expanded dev seed dataset (`DevDataLoader.java`) to 24 diverse encyclopedia documents spanning everyday objects (bottles, chairs, tables, books, clocks, cars, computers), animals (dogs, cats), nature, astronomy (galaxies, oceans, trees, sun), and software engineering.
+- **Cross-Platform Wrapper Patch:** Enhanced `backend/mvnw.cmd` with automatic `%SystemRoot%\System32\WindowsPowerShell\v1.0` path resolution for PowerShell 7 environments and added root `mvnw.cmd` forwarder.
+- **Application Polish & WCAG AA Accessibility:** Skip to main content link (`.skipLink`), enhanced text contrast (5.1:1), visible focus states, one-click document URL clipboard copying, long URL word-break overflow protection, and reduced-motion support.
+
+---
+
 ## [1.1.0] - Phase 5: Query Intelligence & Search Experience (2026-11-20)
 
 ### Added
