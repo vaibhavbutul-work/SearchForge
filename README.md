@@ -642,10 +642,15 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/phases/PHASE_8_INDEX_LIFECYCLE.md`](docs/phases/PHASE_8_INDEX_LIFECYCLE.md)** | Complete guide to Document Lifecycle State Machine, Staged Two-Phase Transactions, Reconciliation Audit, and Self-Healing Repair |
 | **[`docs/PHASE_8_COMPLETE_GUIDE.md`](docs/PHASE_8_COMPLETE_GUIDE.md)** | Masterclass technical guide and staff-engineer talking points for Phase 8 |
 | **[`docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md`](docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md)** | Complete guide to Dense Semantic Retrieval, ONNX Runtime inference, WordPiece tokenizer, and RRF Hybrid Search |
+| **[`docs/PHASE_7_COMPLETE_GUIDE.md`](docs/PHASE_7_COMPLETE_GUIDE.md)** | Masterclass technical guide, WordPiece tokenizer, dynamic tensors, RRF derivations, and benchmarks for Phase 7 |
 | **[`docs/phases/PHASE_6_FRONTEND_APPLICATION.md`](docs/phases/PHASE_6_FRONTEND_APPLICATION.md)** | Complete guide to React + Vite frontend application, design system, and ranking transparency |
 | **[`docs/PHASE_6_COMPLETE_GUIDE.md`](docs/PHASE_6_COMPLETE_GUIDE.md)** | Masterclass index and reference guide for Phase 6 Web Application |
 | **[`docs/phases/PHASE_5_QUERY_INTELLIGENCE.md`](docs/phases/PHASE_5_QUERY_INTELLIGENCE.md)** | Complete guide to Trie autocomplete, spelling correction, sliding snippets, and synonyms |
 | **[`docs/PHASE_5_COMPLETE_GUIDE.md`](docs/PHASE_5_COMPLETE_GUIDE.md)** | Comprehensive index and technical reference for Phase 5 Query Intelligence |
+| **[`docs/PHASE_4_COMPLETE_GUIDE.md`](docs/PHASE_4_COMPLETE_GUIDE.md)** | Masterclass guide to Okapi BM25 ranking, TAAT candidate retrieval, and information retrieval evaluation |
+| **[`docs/PHASE_3_COMPLETE_GUIDE.md`](docs/PHASE_3_COMPLETE_GUIDE.md)** | Masterclass guide to linguistic normalization, Porter stemming, and inverted positional indexing |
+| **[`docs/PHASE_2_COMPLETE_GUIDE.md`](docs/PHASE_2_COMPLETE_GUIDE.md)** | Masterclass guide to Project Loom web crawler, RFC 3986/9309, and politeness rate limiting |
+| **[`docs/PHASE_1_COMPLETE_GUIDE.md`](docs/PHASE_1_COMPLETE_GUIDE.md)** | Masterclass guide to project foundation, architecture, and baseline setup |
 
 ---
 

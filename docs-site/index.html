@@ -59,6 +59,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
         Architecture Inspector
       </a>
+      <a href="#semantic" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><circle cx="12" cy="12" r="6"/></svg>
+        Dense Semantic & Hybrid (Phase 7)
+      </a>
       <a href="#lifecycle" class="nav-link">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
         Lifecycle & Recovery (Phase 8)
@@ -406,6 +410,12 @@
             <p>Robertson-Spärck Jones IDF, saturation curve, length penalty, Min-Heap Top-K selection.</p>
           </div>
 
+          <div class="arch-card" data-subsystem="semantic">
+            <div class="arch-icon">🧠</div>
+            <h3>Dense Semantic & Hybrid</h3>
+            <p>ONNX all-MiniLM-L6-v2, WordPiece 30k vocab, dynamic tensors, RRF hybrid fusion.</p>
+          </div>
+
           <div class="arch-card" data-subsystem="api">
             <div class="arch-icon">📡</div>
             <h3>REST API & Telemetry</h3>
@@ -451,6 +461,142 @@
                 <strong>Input:</strong> <span id="archModalInputs">Candidate document IDs, term frequencies, collection stats</span><br>
                 <strong>Output:</strong> <span id="archModalOutputs">RankedSearchResult list sorted descending by score in sub-millisecond latency</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PHASE 7: DENSE SEMANTIC RETRIEVAL & HYBRID SEARCH -->
+      <section id="semantic" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Local Neural Inference & Dual-Pathway Retrieval</span>
+          <h2 class="section-title">Dense Semantic Retrieval & Hybrid Search (Phase 7)</h2>
+          <p class="section-desc">Unifies exact keyword precision with continuous vector representations using local ONNX Runtime transformer inference (all-MiniLM-L6-v2), authentic 30,522-token WordPiece tokenization, dynamic sequence tensor sizing, and Reciprocal Rank Fusion (RRF).</p>
+        </div>
+
+        <!-- Architecture Flow -->
+        <div class="pipeline-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 12px;">Dual-Pathway Hybrid Architecture</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Incoming queries are routed simultaneously through the <strong>BM25 Lexical Engine</strong> and the <strong>Dense Semantic Engine</strong>. The resulting rank lists are blended using scale-invariant Reciprocal Rank Fusion without fragile score tuning.
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+            <div style="background: var(--bg-primary); padding: 16px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="background: rgba(14, 165, 233, 0.2); color: var(--accent-cyan); font-weight: 800; font-size: 12px; padding: 2px 8px; border-radius: 4px;">PATH A</span>
+                <h4 style="font-size: 14px; font-weight: 700; color: #fff;">BM25 Lexical Retrieval</h4>
+              </div>
+              <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Inverted index postings traversal, Robertson-Spärck Jones IDF, and sublinear term saturation. Dominates exact keyword matches, technical IDs (e.g. <code>RFC 9309</code>), and adjacent positional phrases.
+              </p>
+            </div>
+
+            <div style="background: var(--bg-primary); padding: 16px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="background: rgba(99, 102, 241, 0.2); color: var(--accent-indigo); font-weight: 800; font-size: 12px; padding: 2px 8px; border-radius: 4px;">PATH B</span>
+                <h4 style="font-size: 14px; font-weight: 700; color: #fff;">Dense Semantic Retrieval</h4>
+              </div>
+              <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Pure Java WordPiece tokenizer + ONNX Runtime <code>all-MiniLM-L6-v2</code> CPU execution. Projects queries and documents into 384-D latent space with L2 unit normalization, solving vocabulary mismatch.
+              </p>
+            </div>
+
+            <div style="background: var(--bg-primary); padding: 16px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald); font-weight: 800; font-size: 12px; padding: 2px 8px; border-radius: 4px;">FUSION</span>
+                <h4 style="font-size: 14px; font-weight: 700; color: #fff;">Reciprocal Rank Fusion (RRF)</h4>
+              </div>
+              <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Combines rank positions via <code>RRF(d) = Σ 1 / (60 + r_m(d))</code>. Completely immune to scale drift between unbounded BM25 scores and [-1, 1] cosine similarities.
+              </p>
+            </div>
+          </div>
+
+          <!-- Technical Innovations -->
+          <h4 style="font-size: 13px; font-family: monospace; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">Phase 7.1 Key Optimizations & Benchmarks</h4>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px;">
+            <!-- Latency Table -->
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <div style="font-size: 12px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">CPU Inference Optimization (Dynamic Tensors)</div>
+              <table style="width: 100%; font-size: 11px; font-family: monospace; border-collapse: collapse;">
+                <thead>
+                  <tr style="color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+                    <th style="text-align: left; padding: 4px;">Stage</th>
+                    <th style="text-align: right; padding: 4px;">Fixed 256</th>
+                    <th style="text-align: right; padding: 4px; color: var(--accent-emerald);">Dynamic</th>
+                    <th style="text-align: right; padding: 4px;">Gain</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: var(--text-secondary);">WordPiece Tokenizer</td>
+                    <td style="text-align: right; padding: 4px;">—</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-emerald);">0.013 ms</td>
+                    <td style="text-align: right; padding: 4px;">30k Vocab</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: var(--text-secondary);">ONNX Inference (Warmed)</td>
+                    <td style="text-align: right; padding: 4px;">625.4 ms</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-emerald);">2.36 ms</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-cyan); font-weight: 700;">265x</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: var(--text-secondary);">Inference P95</td>
+                    <td style="text-align: right; padding: 4px;">689.5 ms</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-emerald);">3.21 ms</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-cyan); font-weight: 700;">214x</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 4px; color: #fff; font-weight: 700;">End-to-End Hybrid</td>
+                    <td style="text-align: right; padding: 4px;">638.1 ms</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-emerald); font-weight: 700;">2.47 ms</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-emerald); font-weight: 700;">258x</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Quality Table -->
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <div style="font-size: 12px; font-weight: 700; color: var(--accent-emerald); margin-bottom: 8px;">IR Quality Metrics (120 Docs, 40 Queries)</div>
+              <table style="width: 100%; font-size: 11px; font-family: monospace; border-collapse: collapse;">
+                <thead>
+                  <tr style="color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+                    <th style="text-align: left; padding: 4px;">Metric</th>
+                    <th style="text-align: right; padding: 4px;">BM25</th>
+                    <th style="text-align: right; padding: 4px;">ONNX</th>
+                    <th style="text-align: right; padding: 4px; color: var(--accent-amber);">Hybrid RRF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: var(--text-secondary);">NDCG@3</td>
+                    <td style="text-align: right; padding: 4px;">0.8251</td>
+                    <td style="text-align: right; padding: 4px;">0.8142</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-amber); font-weight: 700;">0.8649 (+4.8%)</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: var(--text-secondary);">NDCG@5</td>
+                    <td style="text-align: right; padding: 4px;">0.8410</td>
+                    <td style="text-align: right; padding: 4px;">0.8327</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-amber); font-weight: 700;">0.8792 (+4.5%)</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: var(--text-secondary);">MRR (Mean Recip. Rank)</td>
+                    <td style="text-align: right; padding: 4px;">0.8667</td>
+                    <td style="text-align: right; padding: 4px;">0.8542</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-amber); font-weight: 700;">0.9083 (+4.8%)</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 4px; color: var(--text-secondary);">Recall@5</td>
+                    <td style="text-align: right; padding: 4px;">0.8083</td>
+                    <td style="text-align: right; padding: 4px;">0.7917</td>
+                    <td style="text-align: right; padding: 4px; color: var(--accent-amber); font-weight: 700;">0.8458 (+4.6%)</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

@@ -67,6 +67,23 @@ const ARCH_SUBSYSTEMS = {
     outputs: "RankedSearchResult list sorted descending by score in sub-millisecond latency",
     patterns: "Strategy Pattern, Min-Heap Bounded Queue, Mathematical Modelling"
   },
+  "semantic": {
+    name: "Dense Semantic & Hybrid Search Subsystem",
+    package: "com.searchforge.semantic, com.searchforge.ranking.fusion",
+    responsibility: "Executes local ONNX transformer inference (all-MiniLM-L6-v2), subword WordPiece tokenization, L2 unit normalization, and scale-invariant Reciprocal Rank Fusion.",
+    classes: [
+      "OnnxEmbeddingModel: Microsoft ONNX Runtime Java bindings with dynamic sequence tensor allocation",
+      "WordPieceTokenizer: Pure Java BERT subword segmenter loading official 30,522-token vocab.txt",
+      "QueryEmbeddingCache: Thread-safe bounded LRU cache (sub-0.1ms repeat query latency)",
+      "DocumentEmbeddingService: High-throughput batch vector generator & compatibility validator",
+      "ReciprocalRankFusionEngine: Rank-based score blending: RRF(d) = Σ 1 / (60 + r_m(d))",
+      "InMemoryVectorStorage: Thread-safe cosine similarity vector index with IEEE 754 serialization",
+      "HybridSearchEngine: Orchestrates parallel lexical TAAT and dense semantic vector scans"
+    ],
+    inputs: "Natural language queries, candidate BM25 hits, stored 384-D document vectors",
+    outputs: "384-dimensional dense float vectors, cosine similarity scores, unified hybrid ranked SERP",
+    patterns: "Dual-Pathway Architecture, Rank-Based Fusion, Dynamic Tensor Sizing, LRU Caching"
+  },
   "api": {
     name: "REST API & Actuator Telemetry",
     package: "com.searchforge.ranking.controller, com.searchforge.indexer.controller, com.searchforge.crawler.controller",
