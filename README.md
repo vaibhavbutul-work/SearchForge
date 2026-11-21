@@ -533,40 +533,74 @@ SearchForge includes a decoupled, modern search interface built in React 18 and 
 ```
 
 SearchForge includes **497 hermetic automated tests (484 Backend + 13 Frontend)** across all subsystems:
-- **Phase 8 Index Lifecycle, Data Consistency & Recovery (63 tests):**
+- **Phase 8 Index Lifecycle, Data Consistency & Recovery (76 tests):**
   - `DocumentLifecycleStateMachineTest`: 19 tests validating all 10 states, happy path transitions, illegal jumps, searchability bounds, and entity transition hooks.
   - `DocumentChangeDetectorTest`: 8 tests for URL normalization, SHA-256 hash checks, duplicate URL detection, and re-index requirement evaluations.
-  - `TransactionalIndexingCoordinatorTest`: 4 tests for pre-transaction Stage 1 computation outside DB transactions, Stage 2 atomic commit, and Stage 3 vector synchronization.
-  - `IncrementalIndexUpdateEngineTest`: 4 tests for single-document postings replacement, $df$/$ctf$ recalibration, and BM25 metadata maintenance.
-  - `DocumentDeletionServiceTest`: 4 tests for soft/hard delete, immediate index and vector purging, and 404 safety.
   - `DocumentEmbeddingConsistencyValidatorTest`: 7 tests validating `CURRENT`, `MISSING`, `OUTDATED`, `INCOMPATIBLE`, `ORPHANED`, and `DESYNCHRONIZED` states.
+  - `DocumentRecoveryServiceTest`: 7 tests for transient vs permanent error classification, exponential backoff with jitter, dead-letter recording, and active version preservation.
+  - `DocumentDeletionServiceTest`: 4 tests for soft/hard delete, immediate index and vector purging, and 404 safety.
+  - `IncrementalIndexUpdateEngineTest`: 4 tests for single-document postings replacement, $df$/$ctf$ recalibration, and BM25 metadata maintenance.
+  - `TransactionalIndexingCoordinatorTest`: 4 tests for pre-transaction Stage 1 computation outside DB transactions, Stage 2 atomic commit, and Stage 3 vector synchronization.
   - `IndexIntegrityCheckerTest`: 4 tests for holistic cross-layer audit across storage, lexical index, statistics, and dense vectors.
   - `IndexRepairServiceTest`: 3 tests for `DRY_RUN` non-destructive planning and `REPAIR` self-healing corrective execution.
-  - `DocumentRecoveryServiceTest`: 7 tests for transient vs permanent error classification, exponential backoff, dead-letter recording, and active version preservation.
   - `LifecycleMetricsCollectorTest`: 3 tests for thread-safe event counters, staged duration timing averages, and snapshots.
   - `IndexLifecycleAdminControllerTest`: 8 MVC slice tests validating REST endpoints under `/api/v1/lifecycle`.
   - `IndexLifecycleIntegrationTest`: 5 full-pipeline integration tests demonstrating creation, modification, idempotent re-crawl, deletion, and automated recovery.
-- **Phase 7 Hybrid Search & Semantic Retrieval (148 tests):**
-  - `WordPieceTokenizerTest`: 11 tests for BERT vocabulary loading (30,522 tokens), punctuation separation, greedy subword continuation (`##`), and special tokens.
-  - `RealOnnxLatencyBenchmarkTest`: Real ONNX runtime inference benchmarks, dynamic sequence length validation, and component timing breakdowns.
-  - `QueryEmbeddingCacheTest`: Thread-safe LRU eviction, query normalization, mutation protection, and hit/miss telemetry.
-  - `ReciprocalRankFusionEngineTest`: Rank-based score blending, multi-list aggregation, and tie-breaking.
-  - `SemanticRetrievalQualityTest`: Semantic ranking, irrelevant document rejection, score bounds $[-1.0, 1.0]$, and empty vector storage handling.
-  - `BooleanAndPhraseCorrectnessRegressionTest`: Strict Boolean AST semantics (`AND`, `OR`, `AND NOT`) and adjacent phrase match preservation.
-  - `DocumentEmbeddingServiceTest`: Model compatibility verification, vector storage warmup, and high-throughput batch embedding.
-  - `SearchControllerHybridTest` & `SearchQualityBenchmarkRunnerTest`: Controller routing, multi-cutoff evaluation (NDCG@3, NDCG@5, MRR, P@K, R@K).
-  - Frontend Node.js Test Suite (`searchModes.test.js`, `searchService.test.js`): Mode definitions, parameter serialization, and telemetry mapping.
+- **Phase 7 Hybrid Search & Dense Semantic Retrieval (130 tests):**
+  - `WordPieceTokenizerTest`: 11 tests for BERT vocabulary loading (30,522 tokens), punctuation separation, greedy subword continuation (`##`), and special tokens (`[CLS]`, `[SEP]`, `[UNK]`, `[PAD]`).
+  - `DeterministicEmbeddingModelTest`: 15 tests for offline deterministic vector generation, dimension validation, and hashing reproducibility.
+  - `EmbeddingConfigTest`: 4 tests for model configuration properties, fallback rules, and startup diagnostics.
+  - `QueryEmbeddingCacheTest`: 4 tests for thread-safe LRU eviction, query normalization, mutation protection, and hit/miss telemetry.
+  - `SemanticSearchControllerTest`: 2 tests for semantic REST endpoint parameter validation and response serialization.
+  - `DocumentEmbeddingServiceTest`: 6 tests for model compatibility verification, vector storage warmup, and high-throughput batch embedding.
+  - `SemanticRetrievalEngineTest`: 4 tests for dense vector candidate retrieval, cosine ranking, and threshold pruning.
+  - `SemanticRetrievalQualityTest`: 5 tests for semantic ranking, irrelevant document rejection, score bounds $[-1.0, 1.0]$, and empty vector storage handling.
+  - `DocumentVectorTest`: 4 tests for vector entity encapsulation and immutability.
+  - `ExactVectorSimilarityEngineTest`: 6 tests for exact cosine similarity, dot product verification, and zero-norm protection.
+  - `InMemoryVectorStorageTest`: 7 tests for thread-safe vector storage, concurrent read/write, and vector deletion.
+  - `VectorMathTest`: 10 tests for vector math, L2 Euclidean norm calculation, and unit vector scaling.
+  - `VectorSerializationTest`: 4 tests for IEEE 754 32-bit Little-Endian byte buffer encoding/decoding.
+  - `ReciprocalRankFusionEngineTest`: 8 tests for rank-based score blending, multi-list aggregation, $k=60$ smoothing, and tie-breaking.
+  - `BooleanAndPhraseCorrectnessRegressionTest`: 5 tests verifying strict Boolean AST semantics (`AND`, `OR`, `AND NOT`) and adjacent phrase match preservation during hybrid search.
+  - `DefaultHybridSearchServiceTest`: 6 tests for hybrid search orchestration, fallback handling, and explainability payloads.
+  - `SearchModeTest`: 24 tests for mode routing contracts, parsing, and telemetry mapping.
+  - `SearchControllerHybridTest`: 5 tests for hybrid REST endpoint routing and explainability schema validation.
+- **Phase 6 Frontend Web Application (13 tests):**
+  - `searchModes.test.js`: 4 tests verifying mode definitions, badges, and RRF/semantic descriptions.
+  - `searchService.test.js`: 9 tests verifying mode routing to backend endpoints, query parameter serialization, degradation/fallback telemetry normalization, and empty/whitespace query safety.
 - **Phase 5 Query Intelligence & Experience (88 tests):**
-  - `AutocompleteTrieTest`, `AutocompleteServiceTest`, `AutocompleteControllerTest`: Trie prefix traversal, min-heap Top-K, thread-safe atomic sync, REST validation.
-  - `DamerauLevenshteinDistanceTest`, `SpellingCorrectionServiceTest`, `SpellingSuggestionControllerTest`: Edit distance matrices, adjacent transpositions, length-bucket candidate selection, multi-word spelling scan.
-  - `HtmlSanitizerTest`, `WindowRelevanceScorerTest`, `SnippetGeneratorServiceTest`: Word-boundary snapping, query density scoring, XSS entity escaping, `<mark>` tag injection.
-  - `InMemorySynonymDictionaryTest`, `SynonymExpansionServiceTest`: Bidirectional and one-way synonym expansion, cycle suppression, stop-word pruning.
-  - `SearchIntelligenceIntegrationTest`: Enriched search responses, `didYouMean` suggestions, highlighted snippets, Boolean AST preservation, zero-hit handling.
-  - `DefaultRankedRetrievalEngineSynonymTest`: Weighted BM25 scoring with discounted synonyms ($w_t = 0.5$).
-  - `QueryIntelligenceBenchmarkTest` & `QueryIntelligenceRelevanceEvaluationTest`: Latency percentile benchmarks and IR relevance verification.
-- **Phase 4 Scoring & Ranking (65 tests):** BM25 term scorer, RSJ IDF, length normalization ($b$), term saturation ($k_1$), TAAT retrieval, NDCG@K, MRR, P@K, R@K.
-- **Phase 3 Indexing & Boolean Retrieval (58 tests):** Tokenizer, Porter stemmer, inverted index, positional phrase search, JPA persistence, recursive-descent parser, two-pointer mergers.
-- **Phase 1 & 2 Foundation & Crawler (62 tests):** Virtual thread concurrency, BFS frontier, RFC 3986 normalizer, RFC 9309 robots parser, WireMock integration tests.
+  - `AutocompleteTrieTest`, `AutocompleteServiceTest`, `AutocompleteControllerTest`: 17 tests for Trie prefix traversal, min-heap Top-K, thread-safe atomic sync, REST validation.
+  - `DamerauLevenshteinDistanceTest`, `SpellingCorrectionServiceTest`, `SpellingSuggestionControllerTest`: 22 tests for edit distance matrices, adjacent transpositions, length-bucket candidate selection, multi-word spelling scan.
+  - `HtmlSanitizerTest`, `WindowRelevanceScorerTest`, `SnippetGeneratorServiceTest`: 15 tests for word-boundary snapping, query density scoring, XSS entity escaping, `<mark>` tag injection.
+  - `InMemorySynonymDictionaryTest`, `SynonymExpansionServiceTest`: 13 tests for bidirectional and one-way synonym expansion, cycle suppression, stop-word pruning.
+  - `SearchIntelligenceIntegrationTest`: 9 tests for enriched search responses, `didYouMean` suggestions, highlighted snippets, Boolean AST preservation, zero-hit handling.
+  - `DefaultRankedRetrievalEngineSynonymTest`: 3 tests for weighted BM25 scoring with discounted synonyms ($w_t = 0.5$).
+  - `QueryIntelligenceBenchmarkTest` & `QueryIntelligenceRelevanceEvaluationTest`: 9 tests for latency percentile benchmarks and IR relevance verification.
+- **Phase 4 Scoring, Ranking & IR Evaluation (70 tests):**
+  - `Bm25ConfigTest`, `Bm25ScorerTest`, `Bm25TermScorerTest`: 15 tests for BM25 term scoring, length penalty ($b$), and saturation ($k_1$).
+  - `Bm25IdfCalculatorTest`, `SmoothIdfCalculatorTest`, `TermFrequencyDampenerTest`: 10 tests for non-negative RSJ IDF and term frequency dampening.
+  - `RankedRetrievalEngineTest`, `RankedBooleanQueryEngineTest`, `RankedRetrievalPerformanceTest`: 18 tests for TAAT retrieval, candidate generation, and performance.
+  - `SearchControllerTest`: 8 tests for ranked search controller REST contracts and explainability.
+  - `StatsModelTest`, `TermWeightTest`: 5 tests for corpus statistics models and term weight encapsulation.
+  - `BenchmarkDatasetTest`, `RelevanceMetricsCalculatorTest`, `RelevanceEvaluationRunnerTest`: 11 tests for NDCG@K, MRR, Precision@K, and Recall@K.
+  - `RealOnnxLatencyBenchmarkTest`, `SearchQualityBenchmarkRunnerTest`: 3 tests for real ONNX latency benchmarking and multi-cutoff retrieval evaluation.
+- **Phase 3 Linguistic Processing & Positional Indexing (65 tests):**
+  - `TokenizerTest`: 9 tests for whitespace/punctuation tokenization, character offsets, and Unicode handling.
+  - `PorterStemmerTest`: 5 tests for 5-step morphological suffix reduction cascades.
+  - `InMemoryInvertedIndexTest`: 6 tests for thread-safe postings storage and corpus statistics.
+  - `PositionalIndexSearcherTest`: 6 tests for positional phrase adjacency verification.
+  - `BooleanQueryParserTest`: 12 tests for recursive-descent AST parsing and operator precedence.
+  - `BooleanRetrievalEngineTest`: 9 tests for two-pointer linear merge intersections, unions, and differences.
+  - `IndexingEngineTest`, `IndexControllerTest`: 12 tests for indexing orchestration, chunked batching, and REST endpoints.
+  - `IndexPersistenceTest`: 6 tests for JPA relational postings persistence and metadata tracking.
+- **Phase 1 & 2 Foundation, Loom Concurrency & Web Crawler (55 tests):**
+  - `CrawlerPropertiesTest`, `ConcurrentCrawlEngineTest`, `CrawlEngineTest`: 7 tests for Project Loom virtual thread concurrency, crawling, and supervisor controls.
+  - `DocumentFetcherTest`, `HtmlParserTest`: 10 tests for Jsoup HTTP fetching, size guards, DOM stripping, and SHA-256 fingerprinting.
+  - `PolitenessRateLimiterTest`, `RobotsTxtServiceTest`: 7 tests for per-domain rate limiting and RFC 9309 longest-match directive matching.
+  - `UrlFrontierTest`, `UrlNormalizerTest`, `VisitedFilterTest`: 15 tests for lock-free BFS URL frontier, RFC 3986 canonicalization, and visited set deduplication.
+  - `CrawledDocumentRepositoryTest`: 4 tests for document persistence and querying.
+  - `CrawlerControllerTest`: 6 tests for crawler REST control endpoints.
+  - `HealthControllerTest`, `HealthServiceTest`, `SearchForgeApplicationTests`: 6 tests for application startup context and health probes.
 
 ---
 
@@ -584,13 +618,12 @@ SearchForge includes an in-memory H2 development profile with 24 multi-domain en
 ```bash
 cd backend
 
-# Run all 408 backend tests in-memory
+# Run all 484 backend tests in-memory
 ./mvnw test
 
 # Launch the server with the dev profile (H2 in-memory DB)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
-*(On Windows PowerShell: `.\mvnw.cmd test` and `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"`)*.
 *(On Windows PowerShell: `.\mvnw.cmd test` and `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"`)*.
 
 ### Option B: Production Docker Compose Setup (PostgreSQL 16)
@@ -659,7 +692,7 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 - **[CONTRIBUTING.md](CONTRIBUTING.md):** Guidelines for code style, branching, pull requests, and test expectations.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Contributor standards and inclusive community pledges.
 - **[SECURITY.md](SECURITY.md):** Vulnerability reporting and disclosure protocols.
-- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6.
+- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 8.
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml):** Automated GitHub Actions CI workflow running Java 21 test suites on every pull request.
 - **[.github/workflows/pages.yml](.github/workflows/pages.yml):** Automated GitHub Pages deployment workflow for the interactive `docs-site/`.
 

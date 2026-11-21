@@ -18,9 +18,11 @@ The project follows [Semantic Versioning](https://semver.org/).
 - **Automated Self-Healing Repair Service:** Created `IndexRepairService` supporting `DRY_RUN` and `REPAIR` execution modes to re-index missing active documents, purge orphaned postings and embeddings, regenerate outdated vectors, and re-warm memory state.
 - **Exponential Backoff Retry & Recovery System:** Built `DocumentRecoveryService` classifying transient vs permanent failures, computing exponential backoff with jitter, enforcing a 3-retry dead-letter limit, and preserving active document versions during failed update attempts.
 - **Lifecycle Administration REST Endpoints:** Added `/api/v1/lifecycle` endpoints for document status (`/status/{id}`), manual reindexing (`/reindex/{id}`), deletion (`/{id}`), integrity audit (`/integrity/check`), automated repair (`/integrity/repair`), retry execution (`/retry`), and operational metrics (`/metrics`).
-- **Comprehensive Automated Testing Audit:** Added 63 new tests across unit, MVC slice, and integration suites, bringing total test count to **497 tests (484 backend + 13 frontend)** with 100% pass rate.
+- **Comprehensive Automated Testing Audit:** Added 76 new tests across unit, MVC slice, and integration suites, bringing total test count to **497 tests (484 backend + 13 frontend)** with 100% pass rate.
 
 ---
+
+## [1.3.0] - Phase 7: Hybrid Search & Dense Semantic Retrieval (2026-11-20)
 
 ### Added
 - **Local Dense Semantic Retrieval via ONNX Runtime:** Integrated `all-MiniLM-L6-v2` dense embedding model running locally on CPU in pure Java with Microsoft ONNX Runtime Java bindings. Zero external vector databases, zero paid APIs.
