@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/searchforge-hero-banner.svg" alt="SearchForge Hero Banner" width="100%">
+  <img src="docs/assets/searchforge-hero-banner.svg?v=497" alt="SearchForge Hero Banner" width="100%">
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/metrics-badge-summary.svg" alt="SearchForge Production Metrics Dashboard" width="100%">
+  <img src="docs/assets/metrics-badge-summary.svg?v=497" alt="SearchForge Production Metrics Dashboard" width="100%">
 </p>
 
 ---
