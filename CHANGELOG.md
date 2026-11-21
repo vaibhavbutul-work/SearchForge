@@ -6,7 +6,21 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.3.0] - Phase 7: Hybrid Search & Dense Semantic Retrieval (2026-11-20)
+## [1.4.0] - Phase 8: Index Lifecycle, Data Consistency & Recovery (2026-11-21)
+
+### Added
+- **10-State Document Lifecycle State Machine:** Formalized document state governance (`DISCOVERED`, `FETCHED`, `PROCESSING`, `INDEXING`, `EMBEDDING`, `ACTIVE`, `RETRY`, `FAILED`, `DELETING`, `DELETED`) with checked transition validation, terminal state enforcement, and search isolation (`ACTIVE` only).
+- **Cryptographic Change Detection & Idempotent Crawling:** Built `DocumentChangeDetector` utilizing canonical URL normalization (RFC 3986) and SHA-256 clean content hashing. Identifies `NEW_DOCUMENT`, `UNCHANGED`, `MODIFIED`, and `DUPLICATE_CONTENT_DIFFERENT_URL`, completely skipping redundant tokenization and neural inference for identical content.
+- **Staged Two-Phase Transactional Coordinator:** Implemented `TransactionalIndexingCoordinator` executing CPU-intensive NLP tokenization and ONNX model inference outside database transaction locks (Stage 1), followed by an atomic isolated `@Transactional(isolation = READ_COMMITTED)` relational commit (Stage 2) and post-commit memory synchronization (Stage 3).
+- **Atomic Incremental Single-Document Updates:** Built `IncrementalIndexUpdateEngine` supporting single-document updates without full corpus rebuilds, purging old postings, recalibrating $df$/$ctf$, pruning empty vocabulary terms, maintaining $avgdl$, and updating dense vectors.
+- **Residual-Free Safe Document Deletion:** Implemented `DocumentDeletionService` with soft-lock (`DELETING`), immediate search exclusion, atomic removal from in-memory inverted and positional indexes, metadata pruning, and removal of vectors from `VectorStorage` and database entities.
+- **Cross-Layer Index Reconciliation & Integrity Checker:** Created non-destructive `IndexIntegrityChecker` auditing relational tables, in-memory inverted indexes, positional postings, BM25 corpus metrics, and dense embeddings to detect orphaned or missing postings, model incompatibilities, and statistics drift.
+- **Automated Self-Healing Repair Service:** Created `IndexRepairService` supporting `DRY_RUN` and `REPAIR` execution modes to re-index missing active documents, purge orphaned postings and embeddings, regenerate outdated vectors, and re-warm memory state.
+- **Exponential Backoff Retry & Recovery System:** Built `DocumentRecoveryService` classifying transient vs permanent failures, computing exponential backoff with jitter, enforcing a 3-retry dead-letter limit, and preserving active document versions during failed update attempts.
+- **Lifecycle Administration REST Endpoints:** Added `/api/v1/lifecycle` endpoints for document status (`/status/{id}`), manual reindexing (`/reindex/{id}`), deletion (`/{id}`), integrity audit (`/integrity/check`), automated repair (`/integrity/repair`), retry execution (`/retry`), and operational metrics (`/metrics`).
+- **Comprehensive Automated Testing Audit:** Added 63 new tests across unit, MVC slice, and integration suites, bringing total test count to **497 tests (484 backend + 13 frontend)** with 100% pass rate.
+
+---
 
 ### Added
 - **Local Dense Semantic Retrieval via ONNX Runtime:** Integrated `all-MiniLM-L6-v2` dense embedding model running locally on CPU in pure Java with Microsoft ONNX Runtime Java bindings. Zero external vector databases, zero paid APIs.

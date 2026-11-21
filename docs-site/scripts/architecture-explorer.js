@@ -96,6 +96,25 @@ const ARCH_SUBSYSTEMS = {
     inputs: "User keystrokes, URL search params (?q=...&mode=...&limit=...)",
     outputs: "Real-time interactive SERP, math score breakdowns, accessible DOM",
     patterns: "Component-Driven Architecture, Custom Hooks, Reactive URL State Synchronization"
+  },
+  "lifecycle": {
+    name: "Index Lifecycle & Recovery Engine",
+    package: "com.searchforge.lifecycle",
+    responsibility: "Guarantees cross-layer consistency across storage, lexical indexes, statistics, and ONNX embeddings using a 10-state machine and self-healing repair.",
+    classes: [
+      "DocumentLifecycleStateMachine: Validated 10-state governance with search isolation",
+      "DocumentChangeDetector: RFC 3986 URL normalizer & SHA-256 content change classifier",
+      "TransactionalIndexingCoordinator: Staged Two-Phase executor (Stage 1 outside DB locks)",
+      "IncrementalIndexUpdateEngine: Single-document postings replacement & df/ctf recalibration",
+      "DocumentDeletionService: Soft-locking & residual-free lexical and vector purging",
+      "DocumentEmbeddingConsistencyValidator: Evaluates CURRENT, OUTDATED, MISSING, and INCOMPATIBLE embeddings",
+      "IndexIntegrityChecker: Non-destructive cross-layer reconciliation auditor",
+      "IndexRepairService: Self-healing repair engine (DRY_RUN & REPAIR modes)",
+      "DocumentRecoveryService: Exponential backoff retry with active version preservation"
+    ],
+    inputs: "CrawledDocument state transitions, content changes, failure signals, admin audit requests",
+    outputs: "Guaranteed consistent relational, lexical, and vector indices; IndexIntegrityReport",
+    patterns: "Finite State Machine (FSM), Two-Phase Transactional Staging, Self-Healing / Auto-Repair"
   }
 };
 

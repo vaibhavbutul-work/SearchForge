@@ -1,6 +1,7 @@
 package com.searchforge.crawler.repository;
 
 import com.searchforge.crawler.model.CrawledDocument;
+import com.searchforge.lifecycle.model.DocumentLifecycleStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -39,6 +40,26 @@ public interface CrawledDocumentRepository extends JpaRepository<CrawledDocument
      * Retrieves all crawled documents for a given domain.
      */
     List<CrawledDocument> findByDomain(String domain);
+
+    /**
+     * Finds all documents matching a specific lifecycle status.
+     */
+    List<CrawledDocument> findByStatus(DocumentLifecycleStatus status);
+
+    /**
+     * Finds a paginated batch of documents matching a specific lifecycle status.
+     */
+    List<CrawledDocument> findByStatus(DocumentLifecycleStatus status, Pageable pageable);
+
+    /**
+     * Counts the number of documents in a specific lifecycle status.
+     */
+    long countByStatus(DocumentLifecycleStatus status);
+
+    /**
+     * Checks if a document with the given URL exists and is in a specific status.
+     */
+    boolean existsByUrlAndStatus(String url, DocumentLifecycleStatus status);
 
     /**
      * Finds all crawled documents that have not yet been indexed.

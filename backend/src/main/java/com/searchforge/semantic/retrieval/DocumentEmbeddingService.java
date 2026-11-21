@@ -61,7 +61,13 @@ public class DocumentEmbeddingService {
         if (document.getId() == null) {
             throw new IllegalArgumentException("Document ID cannot be null (must be persisted first)");
         }
-        return generateAndStoreEmbedding(document.getId(), document.getTitle(), document.getCleanText());
+        return generateAndStoreEmbedding(
+                document.getId(),
+                document.getTitle(),
+                document.getCleanText(),
+                document.getContentHash(),
+                document.getVersion()
+        );
     }
 
     /**
@@ -69,6 +75,14 @@ public class DocumentEmbeddingService {
      */
     @Transactional
     public DocumentVector generateAndStoreEmbedding(Long documentId, String title, String content) {
+        return generateAndStoreEmbedding(documentId, title, content, null, 1);
+    }
+
+    /**
+     * Generates and stores an embedding with version and content hash tracking.
+     */
+    @Transactional
+    public DocumentVector generateAndStoreEmbedding(Long documentId, String title, String content, String contentHash, int documentVersion) {
         if (documentId == null || documentId <= 0) {
             throw new IllegalArgumentException("Document ID must be positive, got: " + documentId);
         }
@@ -89,12 +103,14 @@ public class DocumentEmbeddingService {
                 documentId,
                 embeddingModel.modelName(),
                 vector.length,
-                binaryData
+                binaryData,
+                contentHash,
+                documentVersion
         );
         embeddingRepository.save(newEntity);
 
-        log.debug("Indexed embedding for document ID {} ({} dimensions, model: {})",
-                documentId, vector.length, embeddingModel.modelName());
+        log.debug("Indexed embedding for document ID {} ({} dimensions, model: {}, version: {})",
+                documentId, vector.length, embeddingModel.modelName(), documentVersion);
 
         return docVector;
     }

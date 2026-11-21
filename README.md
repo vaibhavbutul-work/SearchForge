@@ -7,7 +7,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-421%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="421 Tests Passing"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-497%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="497 Tests Passing"></a>
   <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%200.908%20%7C%20NDCG@3%200.865-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
@@ -15,6 +15,7 @@
   <a href="https://vaibhavbutul-work.github.io/SearchForge/"><strong>🌐 Launch Live Interactive Documentation Website</strong></a> •
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
+  <a href="#-index-lifecycle-data-consistency--recovery-phase-8"><strong>Index Lifecycle & Recovery</strong></a> •
   <a href="#-dense-semantic-retrieval--hybrid-search-phase-7"><strong>Hybrid & Semantic Search</strong></a> •
   <a href="#-okapi-bm25-relevance-engine"><strong>BM25 Math</strong></a> •
   <a href="#-query-intelligence--search-experience-phase-5"><strong>Query Intelligence</strong></a> •
@@ -412,6 +413,38 @@ SearchForge introduces native dense vector semantic retrieval and Reciprocal Ran
 
 ---
 
+## 🔄 Index Lifecycle, Data Consistency & Recovery (Phase 8)
+
+Phase 8 elevates SearchForge to enterprise-grade index reliability. It ensures that indexed documents, lexical postings, positional lists, BM25 corpus statistics, and ONNX dense embeddings never desynchronize:
+
+### 1. Document Lifecycle State Machine
+* **Formal State Transitions:** Strictly enforces discrete lifecycle states: `DISCOVERED` $\rightarrow$ `FETCHED` $\rightarrow$ `PROCESSING` $\rightarrow$ `INDEXING` $\rightarrow$ `EMBEDDING` $\rightarrow$ `ACTIVE`, plus `RETRY`, `FAILED`, `DELETING`, and `DELETED`.
+* **Search Isolation:** Only documents in `ACTIVE` state are queryable by search engines. `DELETING`, `FAILED`, and `PROCESSING` documents are strictly excluded.
+
+### 2. Cryptographic Content Hashing & Change Detection
+* **Canonical URL Normalization:** RFC 3986 normalization ensures uniform URL identity.
+* **SHA-256 Content Fingerprinting:** Evaluates clean text digests to classify crawls into `NEW_DOCUMENT`, `UNCHANGED`, `MODIFIED`, and `DUPLICATE_CONTENT_DIFFERENT_URL`.
+* **Idempotency Guarantee:** Identical content bypasses tokenization and ONNX inference entirely, eliminating wasted CPU cycles.
+
+### 3. Staged Two-Phase Transactional Coordinator
+* **Stage 1 (Pre-Transaction Computation):** Executes tokenization, linguistic stemming, and ONNX model inference *outside* database transactions. Zero database locks held during transformer neural execution.
+* **Stage 2 (Atomic Relational Commit):** Atomically commits document version increments ($v \rightarrow v+1$), content hashes, relational term postings, and dense vector entities in an isolated `@Transactional(isolation = READ_COMMITTED)` boundary.
+* **Stage 3 (Post-Commit Memory Sync):** Synchronizes in-memory inverted index postings and updates vector storage.
+
+### 4. Safe Residual-Free Deletion
+* **Atomic Purge:** Deleting a document removes its lexical postings across all terms, decrements $df$/$ctf$, prunes empty vocabulary terms, clears metadata document lengths ($dl$), recalculates corpus average length ($avgdl$), and deletes dense vectors from memory and database tables.
+
+### 5. Cross-Layer Index Reconciliation & Automated Repair
+* **Non-Destructive Audit:** `IndexIntegrityChecker` inspects relational tables, in-memory indexes, document statistics, and vector storage to detect orphaned postings, missing documents, and drifted statistics.
+* **Automated Self-Healing:** `IndexRepairService` provides `DRY_RUN` and `REPAIR` modes to automatically reconstruct missing lexical postings, purge residual records, re-embed outdated vectors, and synchronize corpus metrics.
+
+### 6. Exponential Backoff Retry & Recovery
+* **Failure Classification:** Classifies failures into `TRANSIENT` (timeouts, deadlocks, IO blips) and `PERMANENT` (schema, encoding, unsupported formats).
+* **Exponential Backoff with Jitter:** Retries transient failures up to 3 times before dead-lettering to `FAILED`.
+* **Version Preservation:** Failed update attempts preserve the previous active document version, ensuring zero search downtime.
+
+---
+
 ## 🎨 Complete Frontend Web Application (Phase 6)
 
 SearchForge includes a decoupled, modern search interface built in React 18 and Vite 6 (`frontend/`):
@@ -474,21 +507,45 @@ SearchForge includes a decoupled, modern search interface built in React 18 and 
 | `POST` | `/api/v1/crawler/reset` | Resets frontier queue, visited cache, and engine state |
 | `GET` | `/api/v1/crawler/status` | Returns live crawl telemetry (pages, errors, queue, runtime) |
 
-*For complete request/response schemas, see [`docs/api/SEARCH_API.md`](docs/api/SEARCH_API.md), [`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md), and [`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md).*
+### 4. Index Lifecycle & Recovery Management (`/api/v1/lifecycle`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/lifecycle/status/{docId}` | Retrieves lifecycle status, document version, retry count, and embedding consistency |
+| `POST` | `/api/v1/lifecycle/reindex/{docId}` | Triggers staged single-document reindexing and embedding update |
+| `DELETE` | `/api/v1/lifecycle/{docId}?hard=false` | Deletes document and purges all dependent lexical and vector representations |
+| `GET` | `/api/v1/lifecycle/integrity/check` | Executes non-destructive cross-layer reconciliation audit |
+| `POST` | `/api/v1/lifecycle/integrity/repair?mode=REPAIR` | Runs automated index self-healing repair (`DRY_RUN` or `REPAIR`) |
+| `POST` | `/api/v1/lifecycle/retry?documentId=...` | Retries failed or retry-eligible documents |
+| `GET` | `/api/v1/lifecycle/metrics` | Retrieves real-time operational telemetry and timing metrics snapshot |
+
+*For complete request/response schemas, see [`docs/api/SEARCH_API.md`](docs/api/SEARCH_API.md), [`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md), [`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md), and [`docs/PHASE_8_INDEX_LIFECYCLE.md`](docs/PHASE_8_INDEX_LIFECYCLE.md).*
 
 ---
 
-## 🧪 Automated Testing Audit (421 Tests)
+## 🧪 Automated Testing Audit (497 Tests)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 408, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~33.8s)
+[INFO] Tests run: 484, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~27.6s)
 
-ℹ tests 13, pass 13, fail 0 (Total time: ~88ms)
+ℹ tests 13, pass 13, fail 0 (Total time: ~77ms)
 ```
 
-SearchForge includes **421 hermetic automated tests (408 Backend + 13 Frontend)** across all subsystems:
+SearchForge includes **497 hermetic automated tests (484 Backend + 13 Frontend)** across all subsystems:
+- **Phase 8 Index Lifecycle, Data Consistency & Recovery (63 tests):**
+  - `DocumentLifecycleStateMachineTest`: 19 tests validating all 10 states, happy path transitions, illegal jumps, searchability bounds, and entity transition hooks.
+  - `DocumentChangeDetectorTest`: 8 tests for URL normalization, SHA-256 hash checks, duplicate URL detection, and re-index requirement evaluations.
+  - `TransactionalIndexingCoordinatorTest`: 4 tests for pre-transaction Stage 1 computation outside DB transactions, Stage 2 atomic commit, and Stage 3 vector synchronization.
+  - `IncrementalIndexUpdateEngineTest`: 4 tests for single-document postings replacement, $df$/$ctf$ recalibration, and BM25 metadata maintenance.
+  - `DocumentDeletionServiceTest`: 4 tests for soft/hard delete, immediate index and vector purging, and 404 safety.
+  - `DocumentEmbeddingConsistencyValidatorTest`: 7 tests validating `CURRENT`, `MISSING`, `OUTDATED`, `INCOMPATIBLE`, `ORPHANED`, and `DESYNCHRONIZED` states.
+  - `IndexIntegrityCheckerTest`: 4 tests for holistic cross-layer audit across storage, lexical index, statistics, and dense vectors.
+  - `IndexRepairServiceTest`: 3 tests for `DRY_RUN` non-destructive planning and `REPAIR` self-healing corrective execution.
+  - `DocumentRecoveryServiceTest`: 7 tests for transient vs permanent error classification, exponential backoff, dead-letter recording, and active version preservation.
+  - `LifecycleMetricsCollectorTest`: 3 tests for thread-safe event counters, staged duration timing averages, and snapshots.
+  - `IndexLifecycleAdminControllerTest`: 8 MVC slice tests validating REST endpoints under `/api/v1/lifecycle`.
+  - `IndexLifecycleIntegrationTest`: 5 full-pipeline integration tests demonstrating creation, modification, idempotent re-crawl, deletion, and automated recovery.
 - **Phase 7 Hybrid Search & Semantic Retrieval (148 tests):**
   - `WordPieceTokenizerTest`: 11 tests for BERT vocabulary loading (30,522 tokens), punctuation separation, greedy subword continuation (`##`), and special tokens.
   - `RealOnnxLatencyBenchmarkTest`: Real ONNX runtime inference benchmarks, dynamic sequence length validation, and component timing breakdowns.
@@ -581,7 +638,9 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, and Phase 7 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, and Phase 8 |
+| **[`docs/phases/PHASE_8_INDEX_LIFECYCLE.md`](docs/phases/PHASE_8_INDEX_LIFECYCLE.md)** | Complete guide to Document Lifecycle State Machine, Staged Two-Phase Transactions, Reconciliation Audit, and Self-Healing Repair |
+| **[`docs/PHASE_8_COMPLETE_GUIDE.md`](docs/PHASE_8_COMPLETE_GUIDE.md)** | Masterclass technical guide and staff-engineer talking points for Phase 8 |
 | **[`docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md`](docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md)** | Complete guide to Dense Semantic Retrieval, ONNX Runtime inference, WordPiece tokenizer, and RRF Hybrid Search |
 | **[`docs/phases/PHASE_6_FRONTEND_APPLICATION.md`](docs/phases/PHASE_6_FRONTEND_APPLICATION.md)** | Complete guide to React + Vite frontend application, design system, and ranking transparency |
 | **[`docs/PHASE_6_COMPLETE_GUIDE.md`](docs/PHASE_6_COMPLETE_GUIDE.md)** | Masterclass index and reference guide for Phase 6 Web Application |

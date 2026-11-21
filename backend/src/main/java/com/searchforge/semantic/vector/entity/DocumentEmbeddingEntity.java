@@ -31,9 +31,14 @@ public class DocumentEmbeddingEntity {
     @Column(name = "dimensions", nullable = false)
     private int dimensions;
 
-    @Lob
-    @Column(name = "vector_data", nullable = false)
+    @Column(name = "vector_data", nullable = false, length = 16384)
     private byte[] vectorData;
+
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
+    @Column(name = "document_version")
+    private Integer documentVersion = 1;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -43,10 +48,16 @@ public class DocumentEmbeddingEntity {
     }
 
     public DocumentEmbeddingEntity(Long documentId, String modelName, int dimensions, byte[] vectorData) {
+        this(documentId, modelName, dimensions, vectorData, null, 1);
+    }
+
+    public DocumentEmbeddingEntity(Long documentId, String modelName, int dimensions, byte[] vectorData, String contentHash, Integer documentVersion) {
         this.documentId = Objects.requireNonNull(documentId, "documentId cannot be null");
         this.modelName = Objects.requireNonNull(modelName, "modelName cannot be null");
         this.dimensions = dimensions;
         this.vectorData = Objects.requireNonNull(vectorData, "vectorData cannot be null");
+        this.contentHash = contentHash;
+        this.documentVersion = documentVersion != null ? documentVersion : 1;
         this.createdAt = Instant.now();
     }
 
@@ -68,6 +79,26 @@ public class DocumentEmbeddingEntity {
 
     public byte[] getVectorData() {
         return vectorData != null ? vectorData.clone() : null;
+    }
+
+    public void setVectorData(byte[] vectorData) {
+        this.vectorData = Objects.requireNonNull(vectorData, "vectorData cannot be null");
+    }
+
+    public String getContentHash() {
+        return contentHash;
+    }
+
+    public void setContentHash(String contentHash) {
+        this.contentHash = contentHash;
+    }
+
+    public Integer getDocumentVersion() {
+        return documentVersion;
+    }
+
+    public void setDocumentVersion(Integer documentVersion) {
+        this.documentVersion = documentVersion;
     }
 
     public Instant getCreatedAt() {

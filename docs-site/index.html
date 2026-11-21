@@ -19,7 +19,7 @@
       <div class="logo-badge">SF</div>
       <div class="logo-text">
         <h1>SearchForge</h1>
-        <span>Engine v1.3 • Java 21 • Hybrid Search</span>
+        <span>Engine v1.4 • Java 21 • Hybrid Search & Lifecycle Recovery</span>
       </div>
     </div>
 
@@ -59,6 +59,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
         Architecture Inspector
       </a>
+      <a href="#lifecycle" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        Lifecycle & Recovery (Phase 8)
+      </a>
 
       <div class="nav-group-title">Engineering Specs</div>
       <a href="#api" class="nav-link">
@@ -83,7 +87,7 @@
     <header class="top-bar">
       <div class="search-status-pill">
         <span class="pulse-dot"></span>
-        <span>421 Tests Passing (408 Backend + 13 Frontend) • 100% Hermetic</span>
+        <span>497 Tests Passing (484 Backend + 13 Frontend) • 100% Hermetic</span>
       </div>
       <div class="quick-links">
         <a href="https://github.com/vaibhavbutul-work/SearchForge" target="_blank" class="btn btn-secondary">
@@ -103,15 +107,15 @@
           Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
         </h1>
         <p class="hero-description">
-          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), and <strong>Phase 7 Hybrid Search & Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]).
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), <strong>Phase 7 Hybrid Search & Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]), and <strong>Phase 8 Index Lifecycle & Recovery</strong> (10-state lifecycle state machine, staged two-phase transactional coordinator, cross-layer reconciliation auditor, self-healing repair, and exponential backoff recovery).
         </p>
 
         <!-- Metrics Cards -->
         <div id="metrics" class="metrics-grid">
           <div class="metric-card">
             <div class="metric-label">Automated Tests</div>
-            <div class="metric-value" style="color: var(--accent-emerald);">421 Passing</div>
-            <div class="metric-sub">408 Backend + 13 Frontend (100%)</div>
+            <div class="metric-value" style="color: var(--accent-emerald);">497 Passing</div>
+            <div class="metric-sub">484 Backend + 13 Frontend (100%)</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">Hybrid Latency</div>
@@ -413,6 +417,12 @@
             <h3>Frontend Web Application</h3>
             <p>React 18 / Vite 6 SERP with live snippets, BM25 score transparency, mode switching, and WCAG AA accessibility.</p>
           </div>
+
+          <div class="arch-card" data-subsystem="lifecycle">
+            <div class="arch-icon">🔄</div>
+            <h3>Index Lifecycle & Recovery</h3>
+            <p>10-state lifecycle model, staged 2-phase transactional commit, non-destructive audit, self-healing repair.</p>
+          </div>
         </div>
 
         <!-- Architecture Detail Modal -->
@@ -441,6 +451,57 @@
                 <strong>Input:</strong> <span id="archModalInputs">Candidate document IDs, term frequencies, collection stats</span><br>
                 <strong>Output:</strong> <span id="archModalOutputs">RankedSearchResult list sorted descending by score in sub-millisecond latency</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PHASE 8: INDEX LIFECYCLE & RECOVERY -->
+      <section id="lifecycle" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Data Integrity & Self-Healing Architecture</span>
+          <h2 class="section-title">Index Lifecycle, Consistency & Recovery (Phase 8)</h2>
+          <p class="section-desc">Guarantees that documents never exist in an inconsistent state across relational storage, lexical indexes, positional postings, corpus statistics, and ONNX dense embeddings.</p>
+        </div>
+
+        <div class="pipeline-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 12px;">The 10-State Document Lifecycle State Machine</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Documents strictly transition through validated lifecycle states. Only documents in <code>ACTIVE</code> status are searchable. Documents in <code>DELETING</code>, <code>FAILED</code>, or <code>PROCESSING</code> are completely isolated from query evaluation.
+          </p>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+            <span style="background: rgba(14, 165, 233, 0.15); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">DISCOVERED</span>
+            <span style="color: var(--text-muted); padding: 4px 0;">→</span>
+            <span style="background: rgba(99, 102, 241, 0.15); border: 1px solid var(--accent-indigo); color: var(--accent-indigo); padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">FETCHED</span>
+            <span style="color: var(--text-muted); padding: 4px 0;">→</span>
+            <span style="background: rgba(245, 158, 11, 0.15); border: 1px solid var(--accent-amber); color: var(--accent-amber); padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">PROCESSING</span>
+            <span style="color: var(--text-muted); padding: 4px 0;">→</span>
+            <span style="background: rgba(168, 85, 247, 0.15); border: 1px solid #a855f7; color: #a855f7; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">INDEXING</span>
+            <span style="color: var(--text-muted); padding: 4px 0;">→</span>
+            <span style="background: rgba(236, 72, 153, 0.15); border: 1px solid #ec4899; color: #ec4899; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">EMBEDDING</span>
+            <span style="color: var(--text-muted); padding: 4px 0;">→</span>
+            <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--accent-emerald); color: var(--accent-emerald); padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">ACTIVE (Searchable)</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Staged Two-Phase Transactions</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                Stage 1 computes WordPiece tokenization and ONNX transformer inference <em>outside</em> database transactions (0 locks held). Stage 2 atomically commits version increments, postings, and vectors. Stage 3 syncs memory.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Non-Destructive Reconciliation</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>IndexIntegrityChecker</code> audits across relational tables, in-memory indexes, corpus stats, and vector storage to detect orphaned postings, missing documents, and drifted metrics.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Automated Self-Healing Repair</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>IndexRepairService</code> runs in <code>DRY_RUN</code> or <code>REPAIR</code> mode, automatically reconstructing missing postings, purging orphaned vectors, and resynchronizing memory to 100% health.
+              </p>
             </div>
           </div>
         </div>
@@ -531,6 +592,42 @@
                 <td>Crawl telemetry (pages, queue, runtime)</td>
                 <td><em>none</em></td>
               </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/lifecycle/status/{id}</td>
+                <td>Document lifecycle state, version, and embedding consistency</td>
+                <td>Path: <code>docId</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-emerald); font-weight: 700;">POST</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/lifecycle/reindex/{id}</td>
+                <td>Staged single-document reindexing and embedding update</td>
+                <td>Path: <code>docId</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: #ef4444; font-weight: 700;">DELETE</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/lifecycle/{id}</td>
+                <td>Safe document deletion with index/vector purging</td>
+                <td><code>hard=false</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/lifecycle/integrity/check</td>
+                <td>Non-destructive cross-layer reconciliation audit</td>
+                <td><em>none</em></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-emerald); font-weight: 700;">POST</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/lifecycle/integrity/repair</td>
+                <td>Automated self-healing index repair</td>
+                <td><code>mode=REPAIR|DRY_RUN</code></td>
+              </tr>
+              <tr>
+                <td><span style="color: var(--accent-cyan); font-weight: 700;">GET</span></td>
+                <td style="font-family: monospace; color: #fff;">/api/v1/lifecycle/metrics</td>
+                <td>Real-time lifecycle operational telemetry snapshot</td>
+                <td><em>none</em></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -567,8 +664,8 @@ docker compose up -d
 cd backend
 .\mvnw.cmd spring-boot:run</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 421 Automated Tests (408 Backend + 13 Frontend)</h3>
-          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 408 Backend Tests
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 497 Automated Tests (484 Backend + 13 Frontend)</h3>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 484 Backend Tests
 cd backend
 .\mvnw.cmd test
 
