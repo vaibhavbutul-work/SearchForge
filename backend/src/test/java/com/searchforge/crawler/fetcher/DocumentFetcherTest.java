@@ -48,7 +48,9 @@ class DocumentFetcherTest {
                 1000,
                 1000,
                 1000, // 1000ms read timeout
-                2
+                2,
+                3,
+                500L
         );
         fetcher = new DocumentFetcher(properties);
     }

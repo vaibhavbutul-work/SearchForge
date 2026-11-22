@@ -46,6 +46,29 @@ public class PostingsList implements Iterable<Posting> {
     }
 
     /**
+     * Atomically inserts or completely replaces a Posting in the list, preserving ascending documentId order.
+     * Unlike {@link #addPosting(Posting)}, this does not merge positions, ensuring clean atomic replacement.
+     *
+     * @param posting The posting to insert or replace.
+     */
+    public synchronized void putPosting(Posting posting) {
+        if (posting == null) {
+            return;
+        }
+
+        int index = Collections.binarySearch(postings, posting);
+        if (index >= 0) {
+            Posting existing = postings.get(index);
+            postings.set(index, posting);
+            totalTermFrequency += (posting.termFrequency() - existing.termFrequency());
+        } else {
+            int insertIndex = -(index + 1);
+            postings.add(insertIndex, posting);
+            totalTermFrequency += posting.termFrequency();
+        }
+    }
+
+    /**
      * Returns the document frequency (df), i.e., number of distinct documents containing the term.
      */
     public synchronized int size() {
@@ -103,5 +126,16 @@ public class PostingsList implements Iterable<Posting> {
     @Override
     public synchronized Iterator<Posting> iterator() {
         return List.copyOf(postings).iterator();
+    }
+
+    /**
+     * Creates an independent, point-in-time snapshot copy of this PostingsList.
+     * Subsequent mutations to the original PostingsList will not affect the snapshot.
+     */
+    public synchronized PostingsList snapshot() {
+        PostingsList copy = new PostingsList();
+        copy.postings.addAll(this.postings);
+        copy.totalTermFrequency = this.totalTermFrequency;
+        return copy;
     }
 }

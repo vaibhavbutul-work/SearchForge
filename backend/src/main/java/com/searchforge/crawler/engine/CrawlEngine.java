@@ -12,6 +12,7 @@ import com.searchforge.crawler.repository.CrawledDocumentRepository;
 import com.searchforge.crawler.url.CrawlTask;
 import com.searchforge.crawler.url.UrlFrontier;
 import com.searchforge.crawler.url.UrlNormalizer;
+import com.searchforge.crawler.url.UrlTracker;
 import com.searchforge.crawler.url.VisitedFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +60,7 @@ public class CrawlEngine {
     private final HtmlParser htmlParser;
     private final UrlNormalizer urlNormalizer;
     private final CrawledDocumentRepository repository;
+    private final UrlTracker urlTracker;
 
     private final AtomicReference<CrawlState> state = new AtomicReference<>(CrawlState.IDLE);
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -66,6 +68,29 @@ public class CrawlEngine {
     private final AtomicInteger pagesFailed = new AtomicInteger(0);
     private final Set<String> visitedContentHashes = ConcurrentHashMap.newKeySet();
     private volatile Instant startedAt;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CrawlEngine(CrawlerProperties properties,
+                       UrlFrontier frontier,
+                       VisitedFilter visitedFilter,
+                       RobotsTxtService robotsTxtService,
+                       PolitenessRateLimiter rateLimiter,
+                       DocumentFetcher fetcher,
+                       HtmlParser htmlParser,
+                       UrlNormalizer urlNormalizer,
+                       CrawledDocumentRepository repository,
+                       UrlTracker urlTracker) {
+        this.properties = properties;
+        this.frontier = frontier;
+        this.visitedFilter = visitedFilter;
+        this.robotsTxtService = robotsTxtService;
+        this.rateLimiter = rateLimiter;
+        this.fetcher = fetcher;
+        this.htmlParser = htmlParser;
+        this.urlNormalizer = urlNormalizer;
+        this.repository = repository;
+        this.urlTracker = urlTracker != null ? urlTracker : frontier.getUrlTracker();
+    }
 
     public CrawlEngine(CrawlerProperties properties,
                        UrlFrontier frontier,
@@ -76,15 +101,7 @@ public class CrawlEngine {
                        HtmlParser htmlParser,
                        UrlNormalizer urlNormalizer,
                        CrawledDocumentRepository repository) {
-        this.properties = properties;
-        this.frontier = frontier;
-        this.visitedFilter = visitedFilter;
-        this.robotsTxtService = robotsTxtService;
-        this.rateLimiter = rateLimiter;
-        this.fetcher = fetcher;
-        this.htmlParser = htmlParser;
-        this.urlNormalizer = urlNormalizer;
-        this.repository = repository;
+        this(properties, frontier, visitedFilter, robotsTxtService, rateLimiter, fetcher, htmlParser, urlNormalizer, repository, frontier.getUrlTracker());
     }
 
     /**
@@ -239,60 +256,94 @@ public class CrawlEngine {
         String url = task.url();
         int depth = task.depth();
 
-        // A. Compliance check with Robots.txt
-        if (!robotsTxtService.isAllowed(url)) {
-            log.debug("Skipping URL disallowed by robots.txt: {}", url);
+        // 1. Atomically claim in-flight lease
+        if (!urlTracker.claimInFlight(url)) {
+            log.debug("Skipping URL '{}': already claimed by another worker or completed", url);
             return;
         }
 
-        // B. Politeness rate limiting
-        String domain = urlNormalizer.extractDomain(url).orElse("unknown");
-        long delayMs = robotsTxtService.getCrawlDelayMs(url).orElse(properties.crawlDelayMs());
-        rateLimiter.delayIfNeeded(domain, delayMs);
+        try {
+            // A. Compliance check with Robots.txt
+            if (!robotsTxtService.isAllowed(url)) {
+                log.debug("Skipping URL disallowed by robots.txt: {}", url);
+                urlTracker.markPermanentFailure(url, "Disallowed by robots.txt");
+                return;
+            }
 
-        // Check if stopped while waiting on rate limiter
-        if (!isRunning.get()) {
-            return;
+            // B. Politeness rate limiting
+            String domain = urlNormalizer.extractDomain(url).orElse("unknown");
+            long delayMs = robotsTxtService.getCrawlDelayMs(url).orElse(properties.crawlDelayMs());
+            rateLimiter.delayIfNeeded(domain, delayMs);
+
+            // Check if stopped while waiting on rate limiter
+            if (!isRunning.get()) {
+                urlTracker.releaseInFlightIfPending(url, "Crawl stopped during rate limiting");
+                return;
+            }
+
+            // C. Fetch raw HTML document
+            Optional<FetchedDocument> fetchedOpt = fetcher.fetch(url);
+            if (fetchedOpt.isEmpty()) {
+                handleFetchFailure(url, depth, "Fetch failed (timeout or non-2xx status)");
+                return;
+            }
+
+            // D. Parse HTML, extract text, and discover links
+            ParsedDocument parsed = htmlParser.parse(fetchedOpt.get());
+
+            // E. Content-Hash deduplication: skip saving if exact text body is already in memory or DB
+            if (!visitedContentHashes.add(parsed.contentHash()) || repository.existsByContentHash(parsed.contentHash())) {
+                log.debug("Skipping save for '{}': duplicate content hash '{}' already processed", url, parsed.contentHash());
+                urlTracker.markProcessed(url);
+            } else {
+                CrawledDocument entity = new CrawledDocument(
+                        parsed.url(),
+                        parsed.domain(),
+                        parsed.title(),
+                        parsed.cleanText(),
+                        parsed.contentHash(),
+                        parsed.httpStatusCode(),
+                        parsed.crawledAt()
+                );
+                try {
+                    repository.save(entity);
+                    pagesCrawled.incrementAndGet();
+                    urlTracker.markProcessed(url);
+                    log.info("Persisted document #{}: [{}] {} (depth={})",
+                            pagesCrawled.get(), parsed.domain(), parsed.title(), depth);
+                } catch (Exception e) {
+                    log.warn("Failed to persist document '{}' (possible concurrent duplicate): {}", url, e.getMessage());
+                    urlTracker.markProcessed(url);
+                }
+            }
+
+            // F. Enqueue outbound links for subsequent BFS hop (if depth < maxDepth)
+            if (depth < properties.maxDepth()) {
+                for (String link : parsed.outboundLinks()) {
+                    frontier.enqueue(link, depth + 1, url);
+                }
+            }
+        } finally {
+            // Safety guard: ensure lease is not left stranded in IN_FLIGHT state on unhandled exception
+            urlTracker.releaseInFlightIfPending(url, "Worker finished");
         }
+    }
 
-        // C. Fetch raw HTML document
-        Optional<FetchedDocument> fetchedOpt = fetcher.fetch(url);
-        if (fetchedOpt.isEmpty()) {
-            pagesFailed.incrementAndGet();
-            return;
-        }
-
-        // D. Parse HTML, extract text, and discover links
-        ParsedDocument parsed = htmlParser.parse(fetchedOpt.get());
-
-        // E. Content-Hash deduplication: skip saving if exact text body is already in memory or DB
-        if (!visitedContentHashes.add(parsed.contentHash()) || repository.existsByContentHash(parsed.contentHash())) {
-            log.debug("Skipping save for '{}': duplicate content hash '{}' already processed", url, parsed.contentHash());
+    private void handleFetchFailure(String url, int depth, String reason) {
+        boolean canRetry = urlTracker.markFailedOrRetry(url, properties.maxRetries(), reason);
+        if (canRetry && isRunning.get()) {
+            log.info("Scheduling retry for failed URL '{}' (attempt, depth={})", url, depth);
+            if (properties.retryDelayMs() > 0) {
+                try {
+                    Thread.sleep(properties.retryDelayMs());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            frontier.enqueue(url, depth);
         } else {
-            CrawledDocument entity = new CrawledDocument(
-                    parsed.url(),
-                    parsed.domain(),
-                    parsed.title(),
-                    parsed.cleanText(),
-                    parsed.contentHash(),
-                    parsed.httpStatusCode(),
-                    parsed.crawledAt()
-            );
-            try {
-                repository.save(entity);
-                pagesCrawled.incrementAndGet();
-                log.info("Persisted document #{}: [{}] {} (depth={})",
-                        pagesCrawled.get(), parsed.domain(), parsed.title(), depth);
-            } catch (Exception e) {
-                log.warn("Failed to persist document '{}' (possible concurrent duplicate): {}", url, e.getMessage());
-            }
-        }
-
-        // F. Enqueue outbound links for subsequent BFS hop (if depth < maxDepth)
-        if (depth < properties.maxDepth()) {
-            for (String link : parsed.outboundLinks()) {
-                frontier.enqueue(link, depth + 1, url);
-            }
+            pagesFailed.incrementAndGet();
+            log.warn("URL '{}' marked as permanently FAILED: {}", url, reason);
         }
     }
 
@@ -325,12 +376,20 @@ public class CrawlEngine {
     }
 
     /**
+     * Returns the underlying UrlTracker.
+     */
+    public UrlTracker getUrlTracker() {
+        return urlTracker;
+    }
+
+    /**
      * Resets engine state, clearing the queue and in-memory caches.
      */
     public void reset() {
         stop();
         frontier.clear();
         visitedFilter.clearMemory();
+        urlTracker.clear();
         visitedContentHashes.clear();
         robotsTxtService.clearCache();
         rateLimiter.clear();

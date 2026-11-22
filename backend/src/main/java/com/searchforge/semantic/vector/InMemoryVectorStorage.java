@@ -67,6 +67,41 @@ public class InMemoryVectorStorage implements VectorStorage {
     }
 
     @Override
+    public Optional<DocumentVector> putAndGetPrevious(DocumentVector documentVector) {
+        Objects.requireNonNull(documentVector, "DocumentVector cannot be null");
+        if (documentVector.getDimensions() != dimensions) {
+            throw new IllegalArgumentException(String.format(
+                    "Dimension mismatch: storage expects %d dimensions but got %d",
+                    dimensions, documentVector.getDimensions()));
+        }
+
+        DocumentVector toStore = documentVector.isUnitNormalized()
+                ? documentVector
+                : new DocumentVector(documentVector.getDocumentId(), VectorMath.normalize(documentVector.getValues()));
+
+        return Optional.ofNullable(vectorMap.put(toStore.getDocumentId(), toStore));
+    }
+
+    @Override
+    public boolean replace(long documentId, DocumentVector expectedOld, DocumentVector newVector) {
+        Objects.requireNonNull(newVector, "New DocumentVector cannot be null");
+        if (newVector.getDimensions() != dimensions) {
+            throw new IllegalArgumentException(String.format(
+                    "Dimension mismatch: storage expects %d dimensions but got %d",
+                    dimensions, newVector.getDimensions()));
+        }
+
+        DocumentVector toStore = newVector.isUnitNormalized()
+                ? newVector
+                : new DocumentVector(newVector.getDocumentId(), VectorMath.normalize(newVector.getValues()));
+
+        if (expectedOld == null) {
+            return vectorMap.putIfAbsent(documentId, toStore) == null;
+        }
+        return vectorMap.replace(documentId, expectedOld, toStore);
+    }
+
+    @Override
     public Optional<DocumentVector> get(long documentId) {
         return Optional.ofNullable(vectorMap.get(documentId));
     }

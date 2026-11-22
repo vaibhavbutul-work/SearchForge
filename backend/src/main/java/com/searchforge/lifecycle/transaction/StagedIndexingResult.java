@@ -14,6 +14,7 @@ public record StagedIndexingResult(
     public enum Status {
         SUCCESS,
         UNCHANGED,
+        PARTIAL_SUCCESS,
         FAILED
     }
 
@@ -21,8 +22,24 @@ public record StagedIndexingResult(
         return status == Status.SUCCESS || status == Status.UNCHANGED;
     }
 
+    public boolean isPartialSuccess() {
+        return status == Status.PARTIAL_SUCCESS;
+    }
+
+    public boolean isUnchanged() {
+        return status == Status.UNCHANGED;
+    }
+
+    public boolean isFailure() {
+        return status == Status.FAILED;
+    }
+
     public static StagedIndexingResult success(Long documentId, int version, int tokenCount, long durationMs) {
         return new StagedIndexingResult(Status.SUCCESS, documentId, version, tokenCount, durationMs, "Document indexed and committed successfully");
+    }
+
+    public static StagedIndexingResult partialSuccess(Long documentId, int version, int tokenCount, String message, long durationMs) {
+        return new StagedIndexingResult(Status.PARTIAL_SUCCESS, documentId, version, tokenCount, durationMs, message);
     }
 
     public static StagedIndexingResult unchanged(Long documentId, int version, long durationMs) {

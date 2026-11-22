@@ -2,12 +2,15 @@ package com.searchforge.lifecycle.recovery;
 
 import com.searchforge.crawler.model.CrawledDocument;
 import com.searchforge.crawler.repository.CrawledDocumentRepository;
+import com.searchforge.lifecycle.filter.ActiveDocumentFilter;
 import com.searchforge.lifecycle.model.DocumentLifecycleStatus;
 import com.searchforge.lifecycle.transaction.StagedIndexingResult;
 import com.searchforge.lifecycle.transaction.TransactionalIndexingCoordinator;
+import jakarta.persistence.OptimisticLockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,7 @@ public class DocumentRecoveryService {
 
     private final CrawledDocumentRepository crawledDocumentRepository;
     private final TransactionalIndexingCoordinator indexingCoordinator;
+    private final ActiveDocumentFilter activeDocumentFilter;
     private final int maxRetries;
     private final long baseBackoffMs;
     private final long maxBackoffMs;
@@ -39,9 +43,17 @@ public class DocumentRecoveryService {
     @Autowired
     public DocumentRecoveryService(
             CrawledDocumentRepository crawledDocumentRepository,
+            TransactionalIndexingCoordinator indexingCoordinator,
+            @Autowired(required = false) ActiveDocumentFilter activeDocumentFilter
+    ) {
+        this(crawledDocumentRepository, indexingCoordinator, activeDocumentFilter, DEFAULT_MAX_RETRIES, DEFAULT_BASE_BACKOFF_MS, DEFAULT_MAX_BACKOFF_MS);
+    }
+
+    public DocumentRecoveryService(
+            CrawledDocumentRepository crawledDocumentRepository,
             TransactionalIndexingCoordinator indexingCoordinator
     ) {
-        this(crawledDocumentRepository, indexingCoordinator, DEFAULT_MAX_RETRIES, DEFAULT_BASE_BACKOFF_MS, DEFAULT_MAX_BACKOFF_MS);
+        this(crawledDocumentRepository, indexingCoordinator, null, DEFAULT_MAX_RETRIES, DEFAULT_BASE_BACKOFF_MS, DEFAULT_MAX_BACKOFF_MS);
     }
 
     public DocumentRecoveryService(
@@ -51,8 +63,20 @@ public class DocumentRecoveryService {
             long baseBackoffMs,
             long maxBackoffMs
     ) {
+        this(crawledDocumentRepository, indexingCoordinator, null, maxRetries, baseBackoffMs, maxBackoffMs);
+    }
+
+    public DocumentRecoveryService(
+            CrawledDocumentRepository crawledDocumentRepository,
+            TransactionalIndexingCoordinator indexingCoordinator,
+            ActiveDocumentFilter activeDocumentFilter,
+            int maxRetries,
+            long baseBackoffMs,
+            long maxBackoffMs
+    ) {
         this.crawledDocumentRepository = Objects.requireNonNull(crawledDocumentRepository);
         this.indexingCoordinator = Objects.requireNonNull(indexingCoordinator);
+        this.activeDocumentFilter = activeDocumentFilter;
         this.maxRetries = maxRetries;
         this.baseBackoffMs = baseBackoffMs;
         this.maxBackoffMs = maxBackoffMs;
@@ -82,7 +106,8 @@ public class DocumentRecoveryService {
     }
 
     private FailureType determineFailureType(Throwable t) {
-        if (t instanceof TimeoutException || t instanceof IOException || t instanceof SQLException) {
+        if (t instanceof TimeoutException || t instanceof IOException || t instanceof SQLException
+                || t instanceof ConcurrencyFailureException || t instanceof OptimisticLockException) {
             return FailureType.TRANSIENT;
         }
 
@@ -124,6 +149,9 @@ public class DocumentRecoveryService {
                     doc.getId(), doc.getVersion(), decision.reason());
             doc.setStatusMessage("Previous active version preserved. Update failed: " + decision.reason());
         } else {
+            if (activeDocumentFilter != null) {
+                activeDocumentFilter.markInactive(doc.getId());
+            }
             if (decision.shouldRetry()) {
                 doc.setStatus(DocumentLifecycleStatus.RETRY);
                 doc.incrementRetryCount();

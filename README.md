@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/searchforge-hero-banner.svg?v=497" alt="SearchForge Hero Banner" width="100%">
+  <img src="docs/assets/searchforge-hero-banner.svg?v=521" alt="SearchForge Hero Banner" width="100%">
 </p>
 
 <p align="center">
@@ -7,7 +7,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-497%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="497 Tests Passing"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-521%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="521 Tests Passing"></a>
   <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%200.908%20%7C%20NDCG@3%200.865-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
@@ -34,7 +34,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/metrics-badge-summary.svg?v=497" alt="SearchForge Production Metrics Dashboard" width="100%">
+  <img src="docs/assets/metrics-badge-summary.svg?v=521" alt="SearchForge Production Metrics Dashboard" width="100%">
 </p>
 
 ---
@@ -522,17 +522,26 @@ SearchForge includes a decoupled, modern search interface built in React 18 and 
 
 ---
 
-## 🧪 Automated Testing Audit (497 Tests)
+## 🧪 Automated Testing Audit (521 Tests)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 484, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~27.6s)
+[INFO] Tests run: 508, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~33.8s)
 
-ℹ tests 13, pass 13, fail 0 (Total time: ~77ms)
+ℹ tests 13, pass 13, fail 0 (Total time: ~79ms)
 ```
 
-SearchForge includes **497 hermetic automated tests (484 Backend + 13 Frontend)** across all subsystems:
+SearchForge includes **521 hermetic automated tests (508 Backend + 13 Frontend)** across all subsystems:
+- **Phase 9 Concurrency, Crash-Safety & High-Throughput Reliability (24 tests):**
+  - `ConcurrencyStressTest`: 50 concurrent worker threads (15 indexing, 10 updating, 5 deleting, 20 searching) under `CyclicBarrier` and 60-second deadlock latch, verifying 100% data integrity and zero deadlocks.
+  - `ChaosStagedIndexingTest`: 2 tests simulating Stage 1 ONNX neural inference crashes and Stage 3 vector desynchronization faults with zero database corruption and auto-healing.
+  - `AtomicIndexSnapshotAndConcurrencyTest`: 6 tests validating atomic differential document replacement, immutable `IndexQuerySnapshot` point-in-time read isolation, and thread-safe dictionary synchronization.
+  - `ConcurrentCrawlProtectionTest`: 4 tests verifying `UrlTracker` atomic state transitions and exclusive in-flight URL leases across 20 competing virtual threads.
+  - `DatabaseConcurrencyAndOptimisticLockTest`: 3 tests for JPA `@Version` conflict detection, optimistic lock retry handling, and idempotent short-circuiting.
+  - `ConcurrentDocumentIndexingTest`: 3 tests for striped `DocumentLockManager` mutual exclusion under 10 concurrent virtual thread updates, and delete race resurrection prevention.
+  - `VectorStorageSyncAndRollbackTest`: 3 tests for CAS atomic vector replacement, defensive Stage 3 rollback quarantine, and direct zero-inference vector reconciliation.
+  - `SearchIsolationAndStartupReconciliationTest`: 3 tests verifying sub-10ns `ActiveDocumentFilter` search candidate isolation and startup crash recovery via `StartupIndexReconciliationRunner`.
 - **Phase 8 Index Lifecycle, Data Consistency & Recovery (76 tests):**
   - `DocumentLifecycleStateMachineTest`: 19 tests validating all 10 states, happy path transitions, illegal jumps, searchability bounds, and entity transition hooks.
   - `DocumentChangeDetectorTest`: 8 tests for URL normalization, SHA-256 hash checks, duplicate URL detection, and re-index requirement evaluations.
@@ -671,7 +680,8 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, and Phase 8 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 9 |
+| **[`docs/PHASE_9_COMPLETE_GUIDE.md`](docs/PHASE_9_COMPLETE_GUIDE.md)** | Masterclass technical guide, concurrency architecture, chaos engineering, and 50-thread stress results for Phase 9 |
 | **[`docs/phases/PHASE_8_INDEX_LIFECYCLE.md`](docs/phases/PHASE_8_INDEX_LIFECYCLE.md)** | Complete guide to Document Lifecycle State Machine, Staged Two-Phase Transactions, Reconciliation Audit, and Self-Healing Repair |
 | **[`docs/PHASE_8_COMPLETE_GUIDE.md`](docs/PHASE_8_COMPLETE_GUIDE.md)** | Masterclass technical guide and staff-engineer talking points for Phase 8 |
 | **[`docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md`](docs/phases/PHASE_7_SEMANTIC_RETRIEVAL.md)** | Complete guide to Dense Semantic Retrieval, ONNX Runtime inference, WordPiece tokenizer, and RRF Hybrid Search |

@@ -1,5 +1,7 @@
 package com.searchforge.semantic.vector;
 
+import com.searchforge.lifecycle.filter.ActiveDocumentFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -16,9 +18,17 @@ import java.util.*;
 public class ExactVectorSimilarityEngine implements VectorSimilarityEngine {
 
     private final VectorStorage storage;
+    private final ActiveDocumentFilter activeDocumentFilter;
 
     public ExactVectorSimilarityEngine(VectorStorage storage) {
+        this(storage, null);
+    }
+
+    @Autowired
+    public ExactVectorSimilarityEngine(VectorStorage storage,
+                                       @Autowired(required = false) ActiveDocumentFilter activeDocumentFilter) {
         this.storage = Objects.requireNonNull(storage, "VectorStorage cannot be null");
+        this.activeDocumentFilter = activeDocumentFilter;
     }
 
     @Override
@@ -52,6 +62,9 @@ public class ExactVectorSimilarityEngine implements VectorSimilarityEngine {
         PriorityQueue<VectorSearchResult> minHeap = new PriorityQueue<>(topK, minHeapComparator);
 
         for (DocumentVector candidate : candidates) {
+            if (activeDocumentFilter != null && !activeDocumentFilter.isActive(candidate.getDocumentId())) {
+                continue;
+            }
             float similarity = VectorMath.cosineSimilarity(normalizedQuery, candidate.getValues());
 
             VectorSearchResult entry = new VectorSearchResult(candidate.getDocumentId(), similarity, 0);

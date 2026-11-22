@@ -35,6 +35,9 @@ class IndexPersistenceTest {
         postingRepository.deleteAll();
         termRepository.deleteAll();
         metadataRepository.deleteAll();
+        postingRepository.flush();
+        termRepository.flush();
+        metadataRepository.flush();
     }
 
     @Test

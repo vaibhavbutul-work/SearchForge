@@ -3,7 +3,7 @@ package com.searchforge.crawler.url;
 import com.searchforge.crawler.repository.CrawledDocumentRepository;
 import org.springframework.stereotype.Component;
 
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Thread-safe filter that tracks visited URLs to prevent duplicate crawling.
  *
  * Employs a dual-layer check:
- * 1. High-speed in-memory set (ConcurrentHashMap.newKeySet()) for current crawl session.
+ * 1. High-speed in-memory state tracking via UrlTracker and concurrent set.
  * 2. Persistent database check (CrawledDocumentRepository.existsByUrl()) across application restarts.
  */
 @Component
@@ -19,9 +19,19 @@ public class VisitedFilter {
 
     private final Set<String> memoryVisited = ConcurrentHashMap.newKeySet();
     private final CrawledDocumentRepository repository;
+    private final UrlTracker urlTracker;
 
-    public VisitedFilter(CrawledDocumentRepository repository) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public VisitedFilter(CrawledDocumentRepository repository, UrlTracker urlTracker) {
         this.repository = repository;
+        this.urlTracker = urlTracker != null ? urlTracker : new UrlTracker();
+    }
+
+    /**
+     * Backwards-compatible constructor for existing tests and standalone usage.
+     */
+    public VisitedFilter(CrawledDocumentRepository repository) {
+        this(repository, new UrlTracker());
     }
 
     /**
@@ -34,7 +44,24 @@ public class VisitedFilter {
         if (url == null || url.isBlank()) {
             return true;
         }
-        return memoryVisited.contains(url) || repository.existsByUrl(url);
+        if (memoryVisited.contains(url) || repository.existsByUrl(url)) {
+            return true;
+        }
+        Optional<UrlCrawlState> state = urlTracker.getState(url);
+        return state.isPresent() && state.get() == UrlCrawlState.PROCESSED;
+    }
+
+    /**
+     * Checks whether a URL was already persisted to the database in a previous crawl run.
+     *
+     * @param url Canonical URL to check.
+     * @return true if already persisted in database; false otherwise.
+     */
+    public boolean isPersisted(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+        return repository.existsByUrl(url);
     }
 
     /**
@@ -51,11 +78,23 @@ public class VisitedFilter {
         // Check persistent storage first (prevents re-crawling across restarts)
         if (repository.existsByUrl(url)) {
             memoryVisited.add(url);
+            urlTracker.markProcessed(url);
             return false;
         }
 
         // Atomic add to thread-safe concurrent set
-        return memoryVisited.add(url);
+        boolean added = memoryVisited.add(url);
+        if (added) {
+            urlTracker.markProcessed(url);
+        }
+        return added;
+    }
+
+    /**
+     * Returns the underlying UrlTracker.
+     */
+    public UrlTracker getUrlTracker() {
+        return urlTracker;
     }
 
     /**
@@ -70,5 +109,6 @@ public class VisitedFilter {
      */
     public void clearMemory() {
         memoryVisited.clear();
+        urlTracker.clear();
     }
 }

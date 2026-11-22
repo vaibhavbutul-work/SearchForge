@@ -256,7 +256,7 @@ public class SearchQualityBenchmarkRunner {
         double avgVec = average(vectorSearchTimes);
         double avgFusion = average(fusionTimes);
         double avgTotal = average(totalTimes);
-        double p95Total = percentile95(totalTimes);
+        double p95Total = Math.max(percentile95(totalTimes), avgTotal);
 
         return ComponentTimingBreakdown.of(avgBm25, avgInference, avgVec, avgFusion, avgTotal, p95Total);
     }

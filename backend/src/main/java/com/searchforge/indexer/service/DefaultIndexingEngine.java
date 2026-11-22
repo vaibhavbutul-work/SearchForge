@@ -77,9 +77,10 @@ public class DefaultIndexingEngine implements IndexingEngine {
         }
 
         try {
-            // Idempotency: If document was already indexed, purge previous postings first
+            // Idempotency: If document was already indexed, purge previous persistent SQL postings
+            // while preserving in-memory state until atomic replacement
             if (metadataRepository.existsByDocumentId(documentId)) {
-                removeDocument(documentId);
+                purgePersistentPostings(documentId);
             }
 
             // Assemble text from title and clean content
@@ -99,8 +100,8 @@ public class DefaultIndexingEngine implements IndexingEngine {
             List<ProcessedToken> tokens = tokenizer.tokenize(rawText);
             int tokenCount = tokens.size();
 
-            // Group token positions by term
-            Map<String, List<Integer>> termPositions = new LinkedHashMap<>();
+            // Group token positions by term in deterministic sorted order to prevent lock-ordering deadlocks
+            Map<String, List<Integer>> termPositions = new TreeMap<>();
             for (ProcessedToken token : tokens) {
                 termPositions.computeIfAbsent(token.term(), k -> new ArrayList<>()).add(token.position());
             }
@@ -127,8 +128,8 @@ public class DefaultIndexingEngine implements IndexingEngine {
             IndexedDocumentMetadata metadata = new IndexedDocumentMetadata(documentId, tokenCount, Instant.now());
             metadataRepository.save(metadata);
 
-            // Synchronize with In-Memory Inverted Index
-            inMemoryIndex.addDocument(documentId, tokens);
+            // Synchronize with In-Memory Inverted Index atomically
+            inMemoryIndex.replaceDocument(documentId, tokens);
 
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Indexed doc {}: {} tokens, {} unique terms in {} ms",
@@ -149,6 +150,15 @@ public class DefaultIndexingEngine implements IndexingEngine {
             return;
         }
 
+        // Purge persistent relational postings and metadata
+        purgePersistentPostings(documentId);
+
+        // Remove from memory cache
+        inMemoryIndex.removeDocument(documentId);
+        log.debug("Removed document {} from index and persistent storage", documentId);
+    }
+
+    private void purgePersistentPostings(Long documentId) {
         // Determine term statistic updates and obsolete terms
         List<TermPosting> postings = postingRepository.findByDocumentId(documentId);
         List<IndexedTerm> termsToDelete = new ArrayList<>();
@@ -173,12 +183,19 @@ public class DefaultIndexingEngine implements IndexingEngine {
         postingRepository.deleteAll(postings);
         postingRepository.flush();
 
-        // 2. Now safely delete obsolete terms and persist updated term stats
-        if (!termsToDelete.isEmpty()) {
-            termRepository.deleteAll(termsToDelete);
-            termRepository.flush();
+        // 2. Now safely delete obsolete terms only if no concurrent document references them
+        for (IndexedTerm term : termsToDelete) {
+            if (!postingRepository.existsByTermId(term.getId())) {
+                try {
+                    termRepository.delete(term);
+                    termRepository.flush();
+                } catch (Exception e) {
+                    log.debug("Concurrent posting reference prevented deletion of term {}", term.getTerm());
+                }
+            }
         }
         if (!termsToUpdate.isEmpty()) {
+            termsToUpdate.sort(Comparator.comparing(IndexedTerm::getTerm));
             termRepository.saveAll(termsToUpdate);
             termRepository.flush();
         }
@@ -186,10 +203,6 @@ public class DefaultIndexingEngine implements IndexingEngine {
         // 3. Delete document metadata
         metadataRepository.deleteById(documentId);
         metadataRepository.flush();
-
-        // 4. Remove from memory cache
-        inMemoryIndex.removeDocument(documentId);
-        log.debug("Removed document {} from index and persistent storage", documentId);
     }
 
     @Override

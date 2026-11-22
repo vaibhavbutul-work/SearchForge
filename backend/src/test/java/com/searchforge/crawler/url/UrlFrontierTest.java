@@ -41,7 +41,9 @@ class UrlFrontierTest {
                 1000,
                 3000,
                 5000,
-                2
+                2,
+                3,
+                500L
         );
 
         frontier = new UrlFrontier(properties, visitedFilter, normalizer);

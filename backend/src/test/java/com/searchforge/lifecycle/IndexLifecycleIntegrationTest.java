@@ -4,6 +4,9 @@ import com.searchforge.crawler.model.CrawledDocument;
 import com.searchforge.crawler.repository.CrawledDocumentRepository;
 import com.searchforge.indexer.index.InvertedIndex;
 import com.searchforge.indexer.model.PostingsList;
+import com.searchforge.indexer.repository.IndexedDocumentMetadataRepository;
+import com.searchforge.indexer.repository.TermPostingRepository;
+import com.searchforge.lifecycle.filter.ActiveDocumentFilter;
 import com.searchforge.lifecycle.integrity.IndexIntegrityChecker;
 import com.searchforge.lifecycle.integrity.IndexIntegrityReport;
 import com.searchforge.lifecycle.metrics.LifecycleMetricsCollector;
@@ -62,11 +65,30 @@ class IndexLifecycleIntegrationTest {
     @Autowired
     private LifecycleMetricsCollector metricsCollector;
 
+    @Autowired
+    private IndexedDocumentMetadataRepository metadataRepository;
+
+    @Autowired
+    private TermPostingRepository postingRepository;
+
+    @Autowired
+    private com.searchforge.indexer.repository.IndexedTermRepository termRepository;
+
+    @Autowired(required = false)
+    private ActiveDocumentFilter activeDocumentFilter;
+
     @BeforeEach
+    @org.junit.jupiter.api.AfterEach
     void setUp() {
         inMemoryIndex.clear();
         vectorStorage.clear();
+        if (activeDocumentFilter != null) {
+            activeDocumentFilter.clear();
+        }
         embeddingRepository.deleteAll();
+        postingRepository.deleteAll();
+        termRepository.deleteAll();
+        metadataRepository.deleteAll();
         crawledDocumentRepository.deleteAll();
         metricsCollector.reset();
     }

@@ -80,4 +80,22 @@ public interface InvertedIndex {
      * @param termPositions Map of term string to list of positions.
      */
     void addDocumentPostings(long documentId, int docLength, Map<String, List<Integer>> termPositions);
+
+    /**
+     * Atomically replaces the postings and document length of an existing or new document.
+     * Guarantees that concurrent readers never observe intermediate partial state or zero length.
+     *
+     * @param documentId Unique identifier of the document.
+     * @param tokens     New processed tokens.
+     */
+    void replaceDocument(long documentId, List<ProcessedToken> tokens);
+
+    /**
+     * Captures a point-in-time, read-isolated snapshot of collection statistics,
+     * term postings, and candidate document lengths for the specified query terms.
+     *
+     * @param queryTerms Terms to include in the snapshot.
+     * @return Immutable {@link IndexQuerySnapshot}.
+     */
+    IndexQuerySnapshot getSnapshot(java.util.Collection<String> queryTerms);
 }

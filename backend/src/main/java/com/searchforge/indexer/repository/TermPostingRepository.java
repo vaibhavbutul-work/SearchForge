@@ -15,6 +15,8 @@ public interface TermPostingRepository extends JpaRepository<TermPosting, Long> 
 
     List<TermPosting> findByTermId(Long termId);
 
+    boolean existsByTermId(Long termId);
+
     List<TermPosting> findByDocumentId(Long documentId);
 
     Optional<TermPosting> findByTermIdAndDocumentId(Long termId, Long documentId);

@@ -11,6 +11,7 @@ import com.searchforge.indexer.search.PhraseMatch;
 import com.searchforge.indexer.search.PositionalIndexSearcher;
 import com.searchforge.indexer.token.ProcessedToken;
 import com.searchforge.indexer.token.Tokenizer;
+import com.searchforge.lifecycle.filter.ActiveDocumentFilter;
 import com.searchforge.ranking.model.CollectionStats;
 import com.searchforge.ranking.model.DocumentStats;
 import com.searchforge.ranking.model.ScoredDocument;
@@ -39,14 +40,24 @@ public class DefaultRankedBooleanQueryEngine implements RankedBooleanQueryEngine
     private final Bm25Scorer bm25Scorer;
     private final Tokenizer tokenizer;
     private final PositionalIndexSearcher positionalIndexSearcher;
+    private final ActiveDocumentFilter activeDocumentFilter;
+
+    public DefaultRankedBooleanQueryEngine(BooleanRetrievalEngine booleanRetrievalEngine,
+                                           InvertedIndex invertedIndex,
+                                           Bm25Scorer bm25Scorer,
+                                           Tokenizer tokenizer,
+                                           PositionalIndexSearcher positionalIndexSearcher) {
+        this(new BooleanQueryParser(), booleanRetrievalEngine, invertedIndex, bm25Scorer, tokenizer, positionalIndexSearcher, null);
+    }
 
     @Autowired
     public DefaultRankedBooleanQueryEngine(BooleanRetrievalEngine booleanRetrievalEngine,
                                            InvertedIndex invertedIndex,
                                            Bm25Scorer bm25Scorer,
                                            Tokenizer tokenizer,
-                                           PositionalIndexSearcher positionalIndexSearcher) {
-        this(new BooleanQueryParser(), booleanRetrievalEngine, invertedIndex, bm25Scorer, tokenizer, positionalIndexSearcher);
+                                           PositionalIndexSearcher positionalIndexSearcher,
+                                           @Autowired(required = false) ActiveDocumentFilter activeDocumentFilter) {
+        this(new BooleanQueryParser(), booleanRetrievalEngine, invertedIndex, bm25Scorer, tokenizer, positionalIndexSearcher, activeDocumentFilter);
     }
 
     public DefaultRankedBooleanQueryEngine(BooleanQueryParser booleanQueryParser,
@@ -55,12 +66,23 @@ public class DefaultRankedBooleanQueryEngine implements RankedBooleanQueryEngine
                                            Bm25Scorer bm25Scorer,
                                            Tokenizer tokenizer,
                                            PositionalIndexSearcher positionalIndexSearcher) {
+        this(booleanQueryParser, booleanRetrievalEngine, invertedIndex, bm25Scorer, tokenizer, positionalIndexSearcher, null);
+    }
+
+    public DefaultRankedBooleanQueryEngine(BooleanQueryParser booleanQueryParser,
+                                           BooleanRetrievalEngine booleanRetrievalEngine,
+                                           InvertedIndex invertedIndex,
+                                           Bm25Scorer bm25Scorer,
+                                           Tokenizer tokenizer,
+                                           PositionalIndexSearcher positionalIndexSearcher,
+                                           ActiveDocumentFilter activeDocumentFilter) {
         this.booleanQueryParser = Objects.requireNonNull(booleanQueryParser, "BooleanQueryParser cannot be null");
         this.booleanRetrievalEngine = Objects.requireNonNull(booleanRetrievalEngine, "BooleanRetrievalEngine cannot be null");
         this.invertedIndex = Objects.requireNonNull(invertedIndex, "InvertedIndex cannot be null");
         this.bm25Scorer = Objects.requireNonNull(bm25Scorer, "Bm25Scorer cannot be null");
         this.tokenizer = Objects.requireNonNull(tokenizer, "Tokenizer cannot be null");
         this.positionalIndexSearcher = Objects.requireNonNull(positionalIndexSearcher, "PositionalIndexSearcher cannot be null");
+        this.activeDocumentFilter = activeDocumentFilter;
     }
 
     @Override
@@ -79,6 +101,11 @@ public class DefaultRankedBooleanQueryEngine implements RankedBooleanQueryEngine
         // 2. Execute Boolean Candidate Retrieval
         BooleanSearchResult boolResult = booleanRetrievalEngine.search(ast);
         List<Long> candidateDocIds = boolResult.documentIds();
+        if (activeDocumentFilter != null) {
+            candidateDocIds = candidateDocIds.stream()
+                    .filter(activeDocumentFilter::isActive)
+                    .toList();
+        }
         if (candidateDocIds.isEmpty()) {
             return List.of();
         }

@@ -53,6 +53,10 @@ public class CrawledDocument {
     @Column(name = "version", nullable = false)
     private int version = 1;
 
+    @Version
+    @Column(name = "version_lock", nullable = false)
+    private Long versionLock;
+
     @Column(name = "status_message", length = 1024)
     private String statusMessage;
 
@@ -202,6 +206,10 @@ public class CrawledDocument {
 
     public void setVersion(int version) {
         this.version = version;
+    }
+
+    public Long getVersionLock() {
+        return versionLock != null ? versionLock : 0L;
     }
 
     public String getStatusMessage() {

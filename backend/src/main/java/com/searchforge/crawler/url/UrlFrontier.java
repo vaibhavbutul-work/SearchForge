@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * 1. Manages candidate URLs scheduled for crawling.
  * 2. Enforces crawl depth limits (depth <= maxDepth).
  * 3. Enforces domain boundaries against the allowed domains whitelist.
- * 4. Coordinates with VisitedFilter to discard previously visited URLs.
+ * 4. Coordinates with UrlTracker and VisitedFilter for atomic state-aware deduplication.
  */
 @Component
 public class UrlFrontier {
@@ -27,13 +27,26 @@ public class UrlFrontier {
     private final CrawlerProperties properties;
     private final VisitedFilter visitedFilter;
     private final UrlNormalizer urlNormalizer;
+    private final UrlTracker urlTracker;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public UrlFrontier(CrawlerProperties properties,
                        VisitedFilter visitedFilter,
-                       UrlNormalizer urlNormalizer) {
+                       UrlNormalizer urlNormalizer,
+                       UrlTracker urlTracker) {
         this.properties = properties;
         this.visitedFilter = visitedFilter;
         this.urlNormalizer = urlNormalizer;
+        this.urlTracker = urlTracker != null ? urlTracker : (visitedFilter != null ? visitedFilter.getUrlTracker() : new UrlTracker());
+    }
+
+    /**
+     * Backwards-compatible constructor for existing tests and standalone usage.
+     */
+    public UrlFrontier(CrawlerProperties properties,
+                       VisitedFilter visitedFilter,
+                       UrlNormalizer urlNormalizer) {
+        this(properties, visitedFilter, urlNormalizer, visitedFilter != null ? visitedFilter.getUrlTracker() : new UrlTracker());
     }
 
     /**
@@ -69,9 +82,15 @@ public class UrlFrontier {
             return false;
         }
 
-        // Check deduplication (both in-memory and database)
-        if (!visitedFilter.markVisited(normalizedUrl)) {
-            log.trace("Discarding URL '{}': already visited or enqueued", normalizedUrl);
+        // Check if already persisted across previous crawls
+        if (visitedFilter.isPersisted(normalizedUrl)) {
+            log.trace("Discarding URL '{}': already persisted in repository", normalizedUrl);
+            return false;
+        }
+
+        // Atomic state transition: transition to QUEUED if not already active
+        if (!urlTracker.transitionToQueued(normalizedUrl)) {
+            log.trace("Discarding URL '{}': already queued, in-flight, or processed", normalizedUrl);
             return false;
         }
 
@@ -96,6 +115,13 @@ public class UrlFrontier {
      */
     public Optional<CrawlTask> poll() {
         return Optional.ofNullable(queue.poll());
+    }
+
+    /**
+     * Returns the underlying UrlTracker.
+     */
+    public UrlTracker getUrlTracker() {
+        return urlTracker;
     }
 
     /**

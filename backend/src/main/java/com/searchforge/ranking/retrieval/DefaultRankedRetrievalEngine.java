@@ -1,10 +1,12 @@
 package com.searchforge.ranking.retrieval;
 
+import com.searchforge.indexer.index.IndexQuerySnapshot;
 import com.searchforge.indexer.index.InvertedIndex;
 import com.searchforge.indexer.model.Posting;
 import com.searchforge.indexer.model.PostingsList;
 import com.searchforge.indexer.token.ProcessedToken;
 import com.searchforge.indexer.token.Tokenizer;
+import com.searchforge.lifecycle.filter.ActiveDocumentFilter;
 import com.searchforge.query.synonym.model.ExpandedQuery;
 import com.searchforge.query.synonym.model.ExpandedTerm;
 import com.searchforge.query.synonym.service.SynonymExpansionService;
@@ -35,22 +37,32 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
     private final Bm25Scorer bm25Scorer;
     private final Tokenizer tokenizer;
     private final SynonymExpansionService synonymExpansionService;
+    private final ActiveDocumentFilter activeDocumentFilter;
 
     public DefaultRankedRetrievalEngine(InvertedIndex invertedIndex,
                                         Bm25Scorer bm25Scorer,
                                         Tokenizer tokenizer) {
-        this(invertedIndex, bm25Scorer, tokenizer, null);
+        this(invertedIndex, bm25Scorer, tokenizer, null, null);
+    }
+
+    public DefaultRankedRetrievalEngine(InvertedIndex invertedIndex,
+                                        Bm25Scorer bm25Scorer,
+                                        Tokenizer tokenizer,
+                                        SynonymExpansionService synonymExpansionService) {
+        this(invertedIndex, bm25Scorer, tokenizer, synonymExpansionService, null);
     }
 
     @Autowired
     public DefaultRankedRetrievalEngine(InvertedIndex invertedIndex,
                                         Bm25Scorer bm25Scorer,
                                         Tokenizer tokenizer,
-                                        @Autowired(required = false) SynonymExpansionService synonymExpansionService) {
+                                        @Autowired(required = false) SynonymExpansionService synonymExpansionService,
+                                        @Autowired(required = false) ActiveDocumentFilter activeDocumentFilter) {
         this.invertedIndex = Objects.requireNonNull(invertedIndex, "InvertedIndex cannot be null");
         this.bm25Scorer = Objects.requireNonNull(bm25Scorer, "Bm25Scorer cannot be null");
         this.tokenizer = Objects.requireNonNull(tokenizer, "Tokenizer cannot be null");
         this.synonymExpansionService = synonymExpansionService;
+        this.activeDocumentFilter = activeDocumentFilter;
     }
 
     @Override
@@ -93,16 +105,17 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
             return List.of();
         }
 
-        // 2. Collection Statistics Extraction
-        long totalDocuments = invertedIndex.getTotalDocuments();
+        // 2. Atomic Collection Statistics & Postings Snapshot Extraction
+        IndexQuerySnapshot snapshot = invertedIndex.getSnapshot(stemWeights.keySet());
+        long totalDocuments = snapshot.totalDocuments();
         if (totalDocuments <= 0) {
             return List.of();
         }
-        double avgDocLength = invertedIndex.getAverageDocumentLength();
+        double avgDocLength = snapshot.averageDocumentLength();
 
         Map<String, Long> dfMap = new HashMap<>();
         for (String term : stemWeights.keySet()) {
-            long df = invertedIndex.getPostings(term)
+            long df = snapshot.getPostings(term)
                     .map(pl -> (long) pl.size())
                     .orElse(0L);
             dfMap.put(term, df);
@@ -112,11 +125,14 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
         // 3. Candidate Generation via Term-At-A-Time (TAAT) Union
         Map<Long, Map<String, Integer>> candidateTermFrequencies = new HashMap<>();
         for (String term : stemWeights.keySet()) {
-            Optional<PostingsList> postingsOpt = invertedIndex.getPostings(term);
+            Optional<PostingsList> postingsOpt = snapshot.getPostings(term);
             if (postingsOpt.isEmpty()) {
                 continue;
             }
             for (Posting posting : postingsOpt.get().getPostings()) {
+                if (activeDocumentFilter != null && !activeDocumentFilter.isActive(posting.documentId())) {
+                    continue;
+                }
                 candidateTermFrequencies
                         .computeIfAbsent(posting.documentId(), k -> new HashMap<>())
                         .put(term, posting.termFrequency());
@@ -127,11 +143,11 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
             return List.of();
         }
 
-        // 4. Convert Candidates to DocumentStats
+        // 4. Convert Candidates to DocumentStats (lengths retrieved from point-in-time snapshot)
         List<DocumentStats> candidateStats = new ArrayList<>(candidateTermFrequencies.size());
         for (Map.Entry<Long, Map<String, Integer>> entry : candidateTermFrequencies.entrySet()) {
             long docId = entry.getKey();
-            int docLength = invertedIndex.getDocLength(docId);
+            int docLength = snapshot.getDocLength(docId);
             candidateStats.add(new DocumentStats(docId, docLength, entry.getValue()));
         }
 
@@ -159,16 +175,17 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
                 .toList();
         Set<String> uniqueTerms = new LinkedHashSet<>(queryTerms);
 
-        // 2. Collection Statistics Extraction
-        long totalDocuments = invertedIndex.getTotalDocuments();
+        // 2. Atomic Collection Statistics & Postings Snapshot Extraction
+        IndexQuerySnapshot snapshot = invertedIndex.getSnapshot(uniqueTerms);
+        long totalDocuments = snapshot.totalDocuments();
         if (totalDocuments <= 0) {
             return List.of();
         }
-        double avgDocLength = invertedIndex.getAverageDocumentLength();
+        double avgDocLength = snapshot.averageDocumentLength();
 
         Map<String, Long> dfMap = new HashMap<>();
         for (String term : uniqueTerms) {
-            long df = invertedIndex.getPostings(term)
+            long df = snapshot.getPostings(term)
                     .map(pl -> (long) pl.size())
                     .orElse(0L);
             dfMap.put(term, df);
@@ -178,11 +195,14 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
         // 3. Candidate Generation via Term-At-A-Time (TAAT) Union
         Map<Long, Map<String, Integer>> candidateTermFrequencies = new HashMap<>();
         for (String term : uniqueTerms) {
-            Optional<PostingsList> postingsOpt = invertedIndex.getPostings(term);
+            Optional<PostingsList> postingsOpt = snapshot.getPostings(term);
             if (postingsOpt.isEmpty()) {
                 continue;
             }
             for (Posting posting : postingsOpt.get().getPostings()) {
+                if (activeDocumentFilter != null && !activeDocumentFilter.isActive(posting.documentId())) {
+                    continue;
+                }
                 candidateTermFrequencies
                         .computeIfAbsent(posting.documentId(), k -> new HashMap<>())
                         .put(term, posting.termFrequency());
@@ -193,11 +213,11 @@ public class DefaultRankedRetrievalEngine implements RankedRetrievalEngine {
             return List.of();
         }
 
-        // 4. Convert Candidates to DocumentStats
+        // 4. Convert Candidates to DocumentStats (lengths retrieved from point-in-time snapshot)
         List<DocumentStats> candidateStats = new ArrayList<>(candidateTermFrequencies.size());
         for (Map.Entry<Long, Map<String, Integer>> entry : candidateTermFrequencies.entrySet()) {
             long docId = entry.getKey();
-            int docLength = invertedIndex.getDocLength(docId);
+            int docLength = snapshot.getDocLength(docId);
             candidateStats.add(new DocumentStats(docId, docLength, entry.getValue()));
         }
 

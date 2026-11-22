@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Enforces per-domain politeness crawl delays.
@@ -14,8 +15,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * Guarantees that successive HTTP requests directed to the same domain are separated
  * by at least the configured or robots-specified crawl delay.
  *
- * Uses fine-grained, per-domain synchronization locks so that rate limiting for one domain
+ * Uses fine-grained, per-domain ReentrantLocks so that rate limiting for one domain
  * never blocks or slows down concurrent requests targeting different domains.
+ *
+ * Important Loom / Java 21 Invariant:
+ * Using ReentrantLock instead of Java synchronized monitors prevents carrier thread
+ * pinning when virtual threads sleep or block during politeness throttling.
  */
 @Component
 public class PolitenessRateLimiter {
@@ -23,7 +28,7 @@ public class PolitenessRateLimiter {
     private static final Logger log = LoggerFactory.getLogger(PolitenessRateLimiter.class);
 
     private final Map<String, Long> lastAccessTimeByDomain = new ConcurrentHashMap<>();
-    private final Map<String, Object> domainLocks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ReentrantLock> domainLocks = new ConcurrentHashMap<>();
 
     /**
      * Blocks the calling thread if necessary to ensure the minimum delay between
@@ -38,9 +43,10 @@ public class PolitenessRateLimiter {
         }
 
         String normalizedDomain = domain.toLowerCase(Locale.ROOT);
-        Object lock = domainLocks.computeIfAbsent(normalizedDomain, k -> new Object());
+        ReentrantLock lock = domainLocks.computeIfAbsent(normalizedDomain, k -> new ReentrantLock());
 
-        synchronized (lock) {
+        lock.lock();
+        try {
             long now = System.currentTimeMillis();
             Long lastAccess = lastAccessTimeByDomain.get(normalizedDomain);
 
@@ -60,6 +66,8 @@ public class PolitenessRateLimiter {
             }
 
             lastAccessTimeByDomain.put(normalizedDomain, System.currentTimeMillis());
+        } finally {
+            lock.unlock();
         }
     }
 

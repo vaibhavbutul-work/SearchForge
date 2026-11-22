@@ -25,6 +25,17 @@ public interface VectorStorage {
     void put(DocumentVector documentVector);
 
     /**
+     * Stores or updates a DocumentVector and returns the previous vector if present.
+     * Useful for transactional compensation and rollback tracking.
+     */
+    Optional<DocumentVector> putAndGetPrevious(DocumentVector documentVector);
+
+    /**
+     * Atomically replaces the vector for a document only if currently mapped to expectedOld.
+     */
+    boolean replace(long documentId, DocumentVector expectedOld, DocumentVector newVector);
+
+    /**
      * Retrieves the DocumentVector for a document ID if present.
      */
     Optional<DocumentVector> get(long documentId);
