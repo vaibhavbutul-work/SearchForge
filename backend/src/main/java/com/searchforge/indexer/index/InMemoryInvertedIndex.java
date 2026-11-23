@@ -148,10 +148,10 @@ public class InMemoryInvertedIndex implements InvertedIndex {
                 if (pl != null) {
                     PostingsList snapshotList = pl.snapshot();
                     snapshotPostings.put(term, snapshotList);
-                    for (Posting p : snapshotList.getPostings()) {
+                    snapshotList.forEachPosting(p -> {
                         long docId = p.documentId();
                         candidateDocLengths.computeIfAbsent(docId, id -> docLengths.getOrDefault(id, 0));
-                    }
+                    });
                 }
             }
 
@@ -215,6 +215,14 @@ public class InMemoryInvertedIndex implements InvertedIndex {
         } finally {
             readLock.unlock();
         }
+    }
+
+    public long getTotalTokens() {
+        return totalTokens.get();
+    }
+
+    public int getDocumentCount() {
+        return getTotalDocuments();
     }
 
     @Override

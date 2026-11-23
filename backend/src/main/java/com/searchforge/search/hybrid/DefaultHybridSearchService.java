@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Production implementation of {@link HybridSearchService}.
@@ -37,6 +40,7 @@ public class DefaultHybridSearchService implements HybridSearchService {
     private final com.searchforge.semantic.embedding.QueryEmbeddingCache queryEmbeddingCache;
     private final int poolMultiplier;
     private final int minPoolSize;
+    private final ExecutorService searchExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public DefaultHybridSearchService(
             RankedRetrievalEngine rankedRetrievalEngine,
@@ -145,26 +149,48 @@ public class DefaultHybridSearchService implements HybridSearchService {
         }
     }
 
+    private record SemanticOutcome(List<VectorSearchResult> hits, String failureReason) {}
+
     private HybridSearchResult executeHybrid(String query, int limit) {
         int candidatePoolSize = Math.max(limit * poolMultiplier, minPoolSize);
 
-        // 1. Lexical BM25 candidate generation
-        List<RankedSearchResult> lexicalHits = rankedRetrievalEngine.search(query, candidatePoolSize);
+        // Execute lexical BM25 and dense semantic retrieval concurrently across virtual threads
+        CompletableFuture<List<RankedSearchResult>> lexicalFuture = CompletableFuture.supplyAsync(
+                () -> rankedRetrievalEngine.search(query, candidatePoolSize),
+                searchExecutor
+        );
 
-        // 2. Dense semantic candidate generation with safety fallback
-        List<VectorSearchResult> semanticHits = null;
-        String semanticFailureReason = null;
+        CompletableFuture<SemanticOutcome> semanticFuture = CompletableFuture.supplyAsync(
+                () -> {
+                    try {
+                        if (embeddingModel == null || vectorSimilarityEngine == null) {
+                            throw new IllegalStateException("Semantic components (EmbeddingModel or VectorSimilarityEngine) are not configured");
+                        }
+                        float[] queryVector = vectorizeQuery(query);
+                        List<VectorSearchResult> hits = vectorSimilarityEngine.search(queryVector, candidatePoolSize);
+                        return new SemanticOutcome(hits, null);
+                    } catch (Exception ex) {
+                        log.warn("Semantic retrieval failed during hybrid search for query '{}': {}. Degrading to lexical BM25.",
+                                query, ex.getMessage());
+                        return new SemanticOutcome(null, ex.getMessage());
+                    }
+                },
+                searchExecutor
+        );
+
+        List<RankedSearchResult> lexicalHits;
+        SemanticOutcome semanticOutcome;
         try {
-            if (embeddingModel == null || vectorSimilarityEngine == null) {
-                throw new IllegalStateException("Semantic components (EmbeddingModel or VectorSimilarityEngine) are not configured");
-            }
-            float[] queryVector = vectorizeQuery(query);
-            semanticHits = vectorSimilarityEngine.search(queryVector, candidatePoolSize);
-        } catch (Exception ex) {
-            log.warn("Semantic retrieval failed during hybrid search for query '{}': {}. Degrading to lexical BM25.",
-                    query, ex.getMessage());
-            semanticFailureReason = ex.getMessage();
+            lexicalHits = lexicalFuture.join();
+            semanticOutcome = semanticFuture.join();
+        } catch (Exception e) {
+            log.error("Error awaiting concurrent hybrid search tasks for query '{}': {}", query, e.getMessage());
+            lexicalHits = rankedRetrievalEngine.search(query, candidatePoolSize);
+            semanticOutcome = new SemanticOutcome(null, e.getMessage());
         }
+
+        List<VectorSearchResult> semanticHits = semanticOutcome.hits();
+        String semanticFailureReason = semanticOutcome.failureReason();
 
         // If semantic retrieval encountered an error, degrade gracefully to lexical
         if (semanticFailureReason != null) {

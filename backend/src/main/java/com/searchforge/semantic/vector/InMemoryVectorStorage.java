@@ -141,6 +141,12 @@ public class InMemoryVectorStorage implements VectorStorage {
         return List.copyOf(vectorMap.values());
     }
 
+    @Override
+    public void forEachVector(java.util.function.Consumer<DocumentVector> consumer) {
+        Objects.requireNonNull(consumer, "Consumer cannot be null");
+        vectorMap.values().forEach(consumer);
+    }
+
     /**
      * Estimates RAM consumption of stored vectors in bytes.
      * Each float = 4 bytes, plus Java object headers and map entry overhead (~64 bytes).

@@ -45,8 +45,7 @@ public class ExactVectorSimilarityEngine implements VectorSimilarityEngine {
             throw new IllegalArgumentException("topK must be positive, got: " + topK);
         }
 
-        List<DocumentVector> candidates = storage.getAllVectors();
-        if (candidates.isEmpty()) {
+        if (storage.size() == 0) {
             return Collections.emptyList();
         }
 
@@ -61,11 +60,11 @@ public class ExactVectorSimilarityEngine implements VectorSimilarityEngine {
 
         PriorityQueue<VectorSearchResult> minHeap = new PriorityQueue<>(topK, minHeapComparator);
 
-        for (DocumentVector candidate : candidates) {
+        storage.forEachVector(candidate -> {
             if (activeDocumentFilter != null && !activeDocumentFilter.isActive(candidate.getDocumentId())) {
-                continue;
+                return;
             }
-            float similarity = VectorMath.cosineSimilarity(normalizedQuery, candidate.getValues());
+            float similarity = VectorMath.fastNormalizedDotProduct(normalizedQuery, candidate.getValuesDirect());
 
             VectorSearchResult entry = new VectorSearchResult(candidate.getDocumentId(), similarity, 0);
 
@@ -75,7 +74,7 @@ public class ExactVectorSimilarityEngine implements VectorSimilarityEngine {
                 minHeap.poll();
                 minHeap.offer(entry);
             }
-        }
+        });
 
         // Extract elements from min-heap and order descending
         List<VectorSearchResult> rankedList = new ArrayList<>(minHeap.size());

@@ -99,7 +99,7 @@ class TransactionalIndexingCoordinatorTest {
         when(embeddingModel.modelName()).thenReturn("all-MiniLM-L6-v2");
         when(embeddingModel.dimensions()).thenReturn(384);
 
-        when(indexingEngine.indexDocument(eq(docId), eq(title), eq(content)))
+        when(indexingEngine.indexDocument(eq(docId), eq(title), eq(content), anyList()))
                 .thenReturn(IndexingResult.success(docId, 2, 2, 5));
         when(embeddingRepository.findByDocumentId(docId)).thenReturn(Optional.empty());
 
@@ -112,7 +112,7 @@ class TransactionalIndexingCoordinatorTest {
         assertEquals(hash, doc.getContentHash());
 
         // Verify relational commit
-        verify(indexingEngine).indexDocument(docId, title, content);
+        verify(indexingEngine).indexDocument(eq(docId), eq(title), eq(content), anyList());
         verify(embeddingRepository).save(any(DocumentEmbeddingEntity.class));
         verify(vectorStorage).put(any());
     }
@@ -161,7 +161,7 @@ class TransactionalIndexingCoordinatorTest {
         when(lexicalTokenizer.tokenize(anyString())).thenReturn(List.of(new ProcessedToken("term", 0)));
         when(embeddingModel.embed(anyString())).thenReturn(new float[384]);
 
-        when(indexingEngine.indexDocument(eq(docId), eq(title), eq(content)))
+        when(indexingEngine.indexDocument(eq(docId), eq(title), eq(content), anyList()))
                 .thenReturn(IndexingResult.failure(docId, "Database connection reset", 10));
 
         StagedIndexingResult result = coordinator.processDocument(docId, title, content);

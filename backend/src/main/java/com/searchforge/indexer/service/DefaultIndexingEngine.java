@@ -32,6 +32,7 @@ public class DefaultIndexingEngine implements IndexingEngine {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultIndexingEngine.class);
     private static final int DEFAULT_BATCH_SIZE = 100;
+    private static final Object NEW_TERM_MUTEX = new Object();
 
     private final Tokenizer tokenizer;
     private final InvertedIndex inMemoryIndex;
@@ -70,6 +71,12 @@ public class DefaultIndexingEngine implements IndexingEngine {
     @Override
     @Transactional
     public IndexingResult indexDocument(Long documentId, String title, String content) {
+        return indexDocument(documentId, title, content, null);
+    }
+
+    @Override
+    @Transactional
+    public IndexingResult indexDocument(Long documentId, String title, String content, List<ProcessedToken> precomputedTokens) {
         long startTime = System.currentTimeMillis();
 
         if (documentId == null) {
@@ -83,21 +90,24 @@ public class DefaultIndexingEngine implements IndexingEngine {
                 purgePersistentPostings(documentId);
             }
 
-            // Assemble text from title and clean content
-            StringBuilder sb = new StringBuilder();
-            if (title != null && !title.isBlank()) {
-                sb.append(title.trim());
-            }
-            if (content != null && !content.isBlank()) {
-                if (!sb.isEmpty()) {
-                    sb.append(" ");
+            // Reuse precomputed tokens if available, or run tokenization pipeline
+            List<ProcessedToken> tokens;
+            if (precomputedTokens != null) {
+                tokens = precomputedTokens;
+            } else {
+                StringBuilder sb = new StringBuilder();
+                if (title != null && !title.isBlank()) {
+                    sb.append(title.trim());
                 }
-                sb.append(content.trim());
+                if (content != null && !content.isBlank()) {
+                    if (!sb.isEmpty()) {
+                        sb.append(" ");
+                    }
+                    sb.append(content.trim());
+                }
+                tokens = tokenizer.tokenize(sb.toString());
             }
-            String rawText = sb.toString();
 
-            // Run tokenization & linguistic processing pipeline
-            List<ProcessedToken> tokens = tokenizer.tokenize(rawText);
             int tokenCount = tokens.size();
 
             // Group token positions by term in deterministic sorted order to prevent lock-ordering deadlocks
@@ -106,23 +116,71 @@ public class DefaultIndexingEngine implements IndexingEngine {
                 termPositions.computeIfAbsent(token.term(), k -> new ArrayList<>()).add(token.position());
             }
 
-            // Persist terms and postings
+            // BATCH PERSISTENCE OPTIMIZATION:
+            // 1. Batch fetch all existing terms in one single query
+            List<String> termNames = new ArrayList<>(termPositions.keySet());
+            List<IndexedTerm> existingTerms = termRepository.findAllByTermIn(termNames);
+            Map<String, IndexedTerm> termMap = new HashMap<>(existingTerms.size());
+            for (IndexedTerm t : existingTerms) {
+                termMap.put(t.getTerm(), t);
+            }
+
+            // 2. Identify missing terms and insert them safely without duplicate key races
+            List<String> missingTermNames = new ArrayList<>();
+            for (String termStr : termPositions.keySet()) {
+                if (!termMap.containsKey(termStr)) {
+                    missingTermNames.add(termStr);
+                }
+            }
+
+            if (!missingTermNames.isEmpty()) {
+                synchronized (NEW_TERM_MUTEX) {
+                    List<IndexedTerm> freshLookup = termRepository.findAllByTermIn(missingTermNames);
+                    for (IndexedTerm t : freshLookup) {
+                        termMap.put(t.getTerm(), t);
+                    }
+                    List<IndexedTerm> toInsert = new ArrayList<>();
+                    for (String missing : missingTermNames) {
+                        if (!termMap.containsKey(missing)) {
+                            int tf = termPositions.get(missing).size();
+                            IndexedTerm term = new IndexedTerm(missing, 1, tf);
+                            toInsert.add(term);
+                            termMap.put(missing, term);
+                        }
+                    }
+                    if (!toInsert.isEmpty()) {
+                        List<IndexedTerm> inserted = termRepository.saveAllAndFlush(toInsert);
+                        for (IndexedTerm t : inserted) {
+                            termMap.put(t.getTerm(), t);
+                        }
+                    }
+                }
+            }
+
+            // 3. For all already-existing terms, update document frequency and collection term frequency
+            List<IndexedTerm> existingToUpdate = new ArrayList<>();
             for (Map.Entry<String, List<Integer>> entry : termPositions.entrySet()) {
                 String termStr = entry.getKey();
-                List<Integer> positions = entry.getValue();
-                int tf = positions.size();
-
-                IndexedTerm term = termRepository.findByTerm(termStr)
-                        .map(existing -> {
-                            existing.setDocumentFrequency(existing.getDocumentFrequency() + 1);
-                            existing.setTotalTermFrequency(existing.getTotalTermFrequency() + tf);
-                            return termRepository.save(existing);
-                        })
-                        .orElseGet(() -> termRepository.save(new IndexedTerm(termStr, 1, tf)));
-
-                TermPosting posting = new TermPosting(term, documentId, positions);
-                postingRepository.save(posting);
+                if (!missingTermNames.contains(termStr)) {
+                    IndexedTerm term = termMap.get(termStr);
+                    if (term != null) {
+                        term.setDocumentFrequency(term.getDocumentFrequency() + 1);
+                        term.setTotalTermFrequency(term.getTotalTermFrequency() + entry.getValue().size());
+                        existingToUpdate.add(term);
+                    }
+                }
             }
+            if (!existingToUpdate.isEmpty()) {
+                termRepository.saveAll(existingToUpdate);
+            }
+
+            // 4. Batch construct and save all postings in one JDBC round-trip
+            List<TermPosting> postingsToSave = new ArrayList<>(termPositions.size());
+            for (Map.Entry<String, List<Integer>> entry : termPositions.entrySet()) {
+                IndexedTerm term = termMap.get(entry.getKey());
+                postingsToSave.add(new TermPosting(term, documentId, entry.getValue()));
+            }
+            postingRepository.saveAll(postingsToSave);
 
             // Save document metadata
             IndexedDocumentMetadata metadata = new IndexedDocumentMetadata(documentId, tokenCount, Instant.now());

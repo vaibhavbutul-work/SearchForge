@@ -1,6 +1,9 @@
 package com.searchforge.indexer.service;
 
 import com.searchforge.crawler.model.CrawledDocument;
+import com.searchforge.indexer.token.ProcessedToken;
+
+import java.util.List;
 
 /**
  * Core interface for the SearchForge Indexing Engine.
@@ -29,6 +32,18 @@ public interface IndexingEngine {
      * @return IndexingResult detailing outcome, token count, and duration.
      */
     IndexingResult indexDocument(Long documentId, String title, String content);
+
+    /**
+     * Indexes a document given its ID, title, and content, using precomputed tokens.
+     * Eliminates duplicate tokenization across staged indexing passes.
+     *
+     * @param documentId         Unique identifier of the document.
+     * @param title              Document title.
+     * @param content            Document content text.
+     * @param precomputedTokens  Precomputed token stream from Stage 1.
+     * @return IndexingResult detailing outcome, token count, and duration.
+     */
+    IndexingResult indexDocument(Long documentId, String title, String content, List<ProcessedToken> precomputedTokens);
 
     /**
      * Removes an indexed document and all its postings from both persistent storage and memory.

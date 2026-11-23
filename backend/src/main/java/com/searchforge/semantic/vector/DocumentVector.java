@@ -51,6 +51,14 @@ public final class DocumentVector {
     }
 
     /**
+     * Package-private and internal zero-copy direct access to the internal float vector array.
+     * Callers must treat the returned array as strictly read-only.
+     */
+    public float[] getValuesDirect() {
+        return values;
+    }
+
+    /**
      * Direct read access at dimension index.
      */
     public float get(int index) {

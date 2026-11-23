@@ -1,6 +1,7 @@
 package com.searchforge.indexer.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -29,15 +30,9 @@ public class PostingsList implements Iterable<Posting> {
         if (index >= 0) {
             // Document already present; merge positions and update term frequency
             Posting existing = postings.get(index);
-            List<Integer> mergedPositions = new ArrayList<>(existing.positions());
-            for (int pos : posting.positions()) {
-                if (!mergedPositions.contains(pos)) {
-                    mergedPositions.add(pos);
-                }
-            }
-            Collections.sort(mergedPositions);
-            postings.set(index, new Posting(posting.documentId(), mergedPositions.size(), mergedPositions));
-            totalTermFrequency += (mergedPositions.size() - existing.termFrequency());
+            int[] merged = mergeSortedPositions(existing.rawPositions(), posting.rawPositions());
+            postings.set(index, new Posting(posting.documentId(), merged.length, merged));
+            totalTermFrequency += (merged.length - existing.termFrequency());
         } else {
             int insertIndex = -(index + 1);
             postings.add(insertIndex, posting);
@@ -84,16 +79,63 @@ public class PostingsList implements Iterable<Posting> {
 
     /**
      * Returns an unmodifiable snapshot of the postings list sorted by documentId ascending.
+     * Note: Creates a defensive copy. For zero-allocation read-only iteration, use {@link #getPostingsView()}
+     * or {@link #forEachPosting(java.util.function.Consumer)}.
      */
     public synchronized List<Posting> getPostings() {
         return List.copyOf(postings);
     }
 
     /**
-     * Finds the posting for a specific documentId via binary search.
+     * Returns an unmodifiable view over the postings list without copying the underlying array.
+     */
+    public synchronized List<Posting> getPostingsView() {
+        return Collections.unmodifiableList(postings);
+    }
+
+    /**
+     * Performs a zero-allocation sequential iteration over all postings.
+     */
+    public synchronized void forEachPosting(java.util.function.Consumer<Posting> consumer) {
+        for (Posting p : postings) {
+            consumer.accept(p);
+        }
+    }
+
+    /**
+     * Direct indexed access to a posting by ordinal offset.
+     */
+    public synchronized Posting getPosting(int index) {
+        return postings.get(index);
+    }
+
+    /**
+     * Returns a compact primitive array of all document IDs in this postings list.
+     */
+    public synchronized long[] getDocumentIds() {
+        long[] ids = new long[postings.size()];
+        for (int i = 0; i < postings.size(); i++) {
+            ids[i] = postings.get(i).documentId();
+        }
+        return ids;
+    }
+
+    /**
+     * Returns a compact primitive array of term frequencies aligned with getDocumentIds().
+     */
+    public synchronized int[] getTermFrequencies() {
+        int[] tfs = new int[postings.size()];
+        for (int i = 0; i < postings.size(); i++) {
+            tfs[i] = postings.get(i).termFrequency();
+        }
+        return tfs;
+    }
+
+    /**
+     * Finds the posting for a specific documentId via zero-allocation binary search.
      */
     public synchronized Optional<Posting> getPostingForDocument(long documentId) {
-        int index = Collections.binarySearch(postings, new Posting(documentId, 1, List.of()));
+        int index = binarySearchByDocId(documentId);
         if (index >= 0) {
             return Optional.of(postings.get(index));
         }
@@ -101,10 +143,10 @@ public class PostingsList implements Iterable<Posting> {
     }
 
     /**
-     * Checks if a documentId is present in this postings list.
+     * Checks if a documentId is present in this postings list via zero-allocation binary search.
      */
     public synchronized boolean containsDocument(long documentId) {
-        return Collections.binarySearch(postings, new Posting(documentId, 1, List.of())) >= 0;
+        return binarySearchByDocId(documentId) >= 0;
     }
 
     /**
@@ -114,13 +156,35 @@ public class PostingsList implements Iterable<Posting> {
      * @return true if a posting was removed, false otherwise.
      */
     public synchronized boolean removePosting(long documentId) {
-        int index = Collections.binarySearch(postings, new Posting(documentId, 1, List.of()));
+        int index = binarySearchByDocId(documentId);
         if (index >= 0) {
             Posting removed = postings.remove(index);
             totalTermFrequency -= removed.termFrequency();
             return true;
         }
         return false;
+    }
+
+    /**
+     * Internal zero-allocation binary search by primitive documentId.
+     */
+    private int binarySearchByDocId(long targetDocId) {
+        int low = 0;
+        int high = postings.size() - 1;
+
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            long midDocId = postings.get(mid).documentId();
+
+            if (midDocId < targetDocId) {
+                low = mid + 1;
+            } else if (midDocId > targetDocId) {
+                high = mid - 1;
+            } else {
+                return mid; // found
+            }
+        }
+        return -(low + 1); // not found
     }
 
     @Override
@@ -137,5 +201,29 @@ public class PostingsList implements Iterable<Posting> {
         copy.postings.addAll(this.postings);
         copy.totalTermFrequency = this.totalTermFrequency;
         return copy;
+    }
+
+    /**
+     * Efficiently merges two ascendingly sorted primitive position arrays in O(N1 + N2) time
+     * without boxing or auxiliary collection instantiation, eliminating duplicate positions.
+     */
+    private static int[] mergeSortedPositions(int[] a, int[] b) {
+        if (a == null || a.length == 0) return (b != null) ? b.clone() : new int[0];
+        if (b == null || b.length == 0) return a.clone();
+        int[] temp = new int[a.length + b.length];
+        int i = 0, j = 0, k = 0;
+        while (i < a.length && j < b.length) {
+            if (a[i] < b[j]) {
+                temp[k++] = a[i++];
+            } else if (a[i] > b[j]) {
+                temp[k++] = b[j++];
+            } else {
+                temp[k++] = a[i++];
+                j++; // duplicate eliminated
+            }
+        }
+        while (i < a.length) temp[k++] = a[i++];
+        while (j < b.length) temp[k++] = b[j++];
+        return (k == temp.length) ? temp : Arrays.copyOf(temp, k);
     }
 }

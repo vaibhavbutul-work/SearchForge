@@ -74,4 +74,14 @@ public interface VectorStorage {
      * Returns all stored DocumentVector objects for exact similarity scans.
      */
     List<DocumentVector> getAllVectors();
+
+    /**
+     * Iterates over all stored document vectors without allocating an intermediate collection.
+     *
+     * @param consumer consumer receiving each stored DocumentVector
+     */
+    default void forEachVector(java.util.function.Consumer<DocumentVector> consumer) {
+        java.util.Objects.requireNonNull(consumer, "Consumer cannot be null");
+        getAllVectors().forEach(consumer);
+    }
 }

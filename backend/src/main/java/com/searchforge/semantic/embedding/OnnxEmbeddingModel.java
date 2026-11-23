@@ -53,10 +53,12 @@ public class OnnxEmbeddingModel implements EmbeddingModel, AutoCloseable {
             // Use reasonable thread count to avoid CPU thread oversubscription
             int cpuCores = Runtime.getRuntime().availableProcessors();
             sessionOptions.setIntraOpNumThreads(Math.max(1, Math.min(4, cpuCores / 2)));
-            sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT);
+            sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
+            sessionOptions.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL);
             this.session = environment.createSession(modelPath, sessionOptions);
             log.info("Successfully loaded ONNX embedding model from {} (dimensions: {}, maxSeqLen: {}, vocabSize: {})",
                     modelPath, this.dimensions, this.maxSequenceLength, tokenizer.getVocabSize());
+            warmup();
         } catch (Exception e) {
             throw new ModelInitializationException("Failed to initialize ONNX Runtime session: " + e.getMessage(), e);
         }
@@ -237,6 +239,19 @@ public class OnnxEmbeddingModel implements EmbeddingModel, AutoCloseable {
 
     public Tokenizer getTokenizer() {
         return tokenizer;
+    }
+
+    /**
+     * Executes a preliminary inference to prime ONNX Runtime execution graphs,
+     * thread pools, and memory arenas, eliminating first-query latency spikes.
+     */
+    public void warmup() {
+        try {
+            embed("searchforge semantic model warmup");
+            log.info("ONNX embedding model execution graph successfully warmed up");
+        } catch (Exception e) {
+            log.warn("ONNX model warmup encountered non-fatal error: {}", e.getMessage());
+        }
     }
 
     @Override

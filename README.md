@@ -7,13 +7,14 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-521%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="521 Tests Passing"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-552%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="552 Tests Passing"></a>
   <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%200.908%20%7C%20NDCG@3%200.865-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
 <p align="center">
   <a href="https://vaibhavbutul-work.github.io/SearchForge/"><strong>🌐 Launch Live Interactive Documentation Website</strong></a> •
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
+  <a href="#-performance--scalability-engineering-phase-10"><strong>Performance Engineering</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
   <a href="#-index-lifecycle-data-consistency--recovery-phase-8"><strong>Index Lifecycle & Recovery</strong></a> •
   <a href="#-dense-semantic-retrieval--hybrid-search-phase-7"><strong>Hybrid & Semantic Search</strong></a> •
@@ -445,6 +446,63 @@ Phase 8 elevates SearchForge to enterprise-grade index reliability. It ensures t
 
 ---
 
+## 🛡️ Concurrency, Crash-Safety & High-Throughput Reliability (Phase 9)
+
+Phase 9 hardens SearchForge against race conditions, thread deadlocks, JVM crash recovery, and multi-thread contention under continuous high-load read/write traffic:
+
+### 1. Optimistic Locking & Version Race Protection
+* **JPA `@Version` Concurrency Control:** Added `version_lock` column to `CrawledDocument`, preventing silent lost updates.
+* **Automated Retry with Exponential Jitter:** Retries optimistic lock exceptions up to 5 times with randomized backoff, resolving transient write conflicts.
+
+### 2. Striped Document Lock Fencing (`DocumentLockManager`)
+* **Fine-Grained Mutex Fencing:** Replaces coarse global synchronization with striped document-level locks (`ConcurrentHashMap<Long, ReentrantLock>`), enabling concurrent updates across distinct documents while serializing mutating operations on identical document IDs.
+
+### 3. Point-in-Time Atomic Index Query Snapshots (`IndexQuerySnapshot`)
+* **Read-Isolated Snapshots:** Employs `ReentrantReadWriteLock` to acquire atomic, lock-free point-in-time index views for searchers, guaranteeing zero index skew during active ingestion.
+
+### 4. Sub-10ns Search Read-Isolation (`ActiveDocumentFilter`)
+* **Zero-Allocation Search Isolation:** Bitset/ConcurrentHashMap-backed filter instantaneously drops soft-deleted, mutating, or quarantined document IDs prior to expensive scoring.
+
+### 5. Startup Crash Reconciliation & Auto-Healing
+* **`StartupIndexReconciliationRunner`:** Automatically reconciles in-memory index structures against persistent PostgreSQL tables upon Spring Boot startup, pre-warming vector caches and self-healing crash artifacts.
+
+---
+
+## ⚡ Performance & Scalability Engineering (Phase 10)
+
+Phase 10 establishes empirical, first-principles algorithmic optimizations across SearchForge's indexing and query pipelines, verified through automated performance regression gates:
+
+### 1. Packed Primitive Postings Memory Optimization
+* **Unboxed Primitive `int[]` Storage:** Transformed `Posting.java` from boxed `List<Integer>` to compact primitive `int[]` with an unmodifiable, lightweight `IntArrayListView`.
+* **Memory Reduction:** Reduces structural posting memory by **$79.1\%$** (from $344\text{ B}$ to $72\text{ B}$ per 5-position posting) and cuts heap allocations by **$83.3\%$** (from 6 heap objects to 1).
+
+### 2. Postings Compression Codec Engine (Delta + VByte)
+* **Monotonic Gap Encoding (`DeltaCodec`):** Encodes strictly ascending document IDs into relative gaps ($\Delta_i = d_i - d_{i-1}$).
+* **7-Bit Variable-Byte Framing (`VByteCodec`):** Compresses integer gaps into 1–4 bytes using continuation bit framing, achieving **$87.5\%$ memory reduction** on dense postings with decode throughput of **$101.3\text{M}$ integers/second**.
+
+### 3. Vector Math Optimization ($L_2$ Unit Normalization Equivalence)
+* **Mathematical Identity:** When vectors are pre-normalized upon storage ($\|A\|_2 = 1.0, \|B\|_2 = 1.0$):
+  $$\text{Cosine}(A, B) \equiv A \cdot B = \sum_{i=1}^d A_i B_i$$
+* **Computational Savings:** Eliminates **$66.7\%$ of multiplications** and **$100\%$ of square roots** per candidate vector with zero practical precision loss ($|\Delta| < 1.5 \times 10^{-8}$).
+
+### 4. Concurrent Hybrid Search Orchestration (Virtual Threads)
+* **Project Loom Concurrency:** Executes lexical BM25 and dense semantic retrieval concurrently across Java 21 Virtual Threads, reducing hybrid latency to $\max(T_{\text{lex}}, T_{\text{sem}}) + T_{\text{RRF}}$.
+* **Graceful Degradation:** Resilient fallback automatically degrades to lexical BM25 if the semantic subsystem encounters an error or timeout.
+
+### 5. Exact Vector Search Scalability Evaluation
+* **Sub-10ms Flat Exact Scan:** Evaluated across $N=100 \dots 10,000$ 384-D vectors, achieving **$8.54\text{ ms}$ ($P_{95}$)** and $134.8\text{ QPS}$ at $10,000$ scale with **$100\%$ Recall@10**.
+* **Architectural Transition Boundary:** Flat Exact Scan is optimal up to $N^* \approx 25,000$ documents; graph-based ANN (HNSW) is recommended for $N > 50,000$.
+
+### 6. Automated 5-Gate Performance Regression Suite
+* **`PerformanceRegressionTest`:** Hard CI gates enforcing:
+  - Gate 1: Lexical query latency (Mean $< 2.0\text{ ms}$, $P_{95} < 5.0\text{ ms}$)
+  - Gate 2: Positional memory budget ($\le 80\text{ B}$ per posting for 5 positions)
+  - Gate 3: Postings compression ratio ($\ge 70\%$) and decode throughput ($\ge 30\text{M}$ ints/s)
+  - Gate 4: Semantic vector scalability ($P_{95} < 10.0\text{ ms}$ for 1,000 vectors, Recall = $1.00$)
+  - Gate 5: Concurrent hybrid retrieval and fault tolerance under component failure
+
+---
+
 ## 🎨 Complete Frontend Web Application (Phase 6)
 
 SearchForge includes a decoupled, modern search interface built in React 18 and Vite 6 (`frontend/`):
@@ -522,17 +580,27 @@ SearchForge includes a decoupled, modern search interface built in React 18 and 
 
 ---
 
-## 🧪 Automated Testing Audit (521 Tests)
+## 🧪 Automated Testing Audit (552 Tests: 539 Backend + 13 Frontend)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 508, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~33.8s)
+[INFO] Tests run: 539, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~38.7s)
 
 ℹ tests 13, pass 13, fail 0 (Total time: ~79ms)
 ```
 
-SearchForge includes **521 hermetic automated tests (508 Backend + 13 Frontend)** across all subsystems:
+SearchForge includes **552 hermetic automated tests (539 Backend + 13 Frontend)** across all subsystems:
+- **Phase 10 Performance & Scalability Engineering (31 tests):**
+  - `PerformanceRegressionTest`: 5 tests enforcing 5 deterministic regression gates (Lexical latency $< 2.0\text{ ms}$, Positional memory $\le 80\text{ B}$, Codec throughput $\ge 30\text{M}$ ints/s, Vector scalability $P_{95} < 10.0\text{ ms}$, and Hybrid degradation resiliency).
+  - `VectorScalabilityBenchmarkTest`: 3 tests evaluating exact vector search scaling across $N \in \{100, 500, 1000, 5000, 10000\}$ 384-D vectors, zero-allocation iteration fidelity, and ANN trade-off boundary modeling ($P_{95} = 8.54\text{ ms}$ at 10k vectors, 100% recall).
+  - `SemanticOptimizationBenchmarkTest`: 3 tests verifying $L_2$ normalized dot-product $1.27\text{x}$ speedup with zero precision drift ($|\Delta| < 1.5 \times 10^{-8}$), ONNX session optimization, and virtual-thread concurrent hybrid search with fallback.
+  - `PostingsOptimizationBenchmarkTest`: 5 tests verifying `DeltaCodec` and `VByteCodec` continuation framing, $87.5\%$ dense compression, $101.3\text{M}$ ints/s decode throughput, and zero-alloc binary search.
+  - `IndexMemoryProfilerTest`: 4 tests verifying compact primitive `int[]` positions in `Posting`, backward-compatible `IntArrayListView`, zero-copy vector arrays, and analytical JVM heap footprints.
+  - `IndexingOptimizationBenchmarkTest`: 3 tests verifying JDBC $N+1$ batching via `IndexedTermRepository.batchInsertOrUpdate`, fine-grained term mutex locking, token instance reuse, and burst batch throughput ($185\text{ docs/s}$).
+  - `SearchBottleneckProfilerTest`: 4 tests for microsecond non-overlapping phase breakdowns and heap allocation deltas.
+  - `SearchPerformanceBenchmarkRunnerTest`: 3 tests for multi-mode search latency histograms and indexing throughput telemetry.
+  - `TransactionalIndexingCoordinatorTest`: 1 test verifying batch indexing coordinator updates.
 - **Phase 9 Concurrency, Crash-Safety & High-Throughput Reliability (24 tests):**
   - `ConcurrencyStressTest`: 50 concurrent worker threads (15 indexing, 10 updating, 5 deleting, 20 searching) under `CyclicBarrier` and 60-second deadlock latch, verifying 100% data integrity and zero deadlocks.
   - `ChaosStagedIndexingTest`: 2 tests simulating Stage 1 ONNX neural inference crashes and Stage 3 vector desynchronization faults with zero database corruption and auto-healing.
@@ -674,13 +742,20 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | Directory / Document | Purpose & Contents |
 | :--- | :--- |
 | **[`docs-site/`](docs-site/index.html)** | **Interactive HTML documentation website with animated search pipeline and BM25 graph** |
+| **[`docs/audits/PHASE_10_PERFORMANCE_AUDIT.md`](docs/audits/PHASE_10_PERFORMANCE_AUDIT.md)** | **Phase 10 Master Capstone Performance Audit Report across all 8 engineering milestones** |
+| **[`docs/audits/PHASE_10_POSTINGS_OPTIMIZATION.md`](docs/audits/PHASE_10_POSTINGS_OPTIMIZATION.md)** | Postings Compression Codecs (DeltaCodec + VByteCodec) and zero-alloc traversal benchmarks |
+| **[`docs/audits/PHASE_10_MEMORY_ANALYSIS.md`](docs/audits/PHASE_10_MEMORY_ANALYSIS.md)** | Packed primitive `int[]` memory profiling, IntArrayListView, and structural JVM heap estimation |
+| **[`docs/audits/PHASE_10_SEMANTIC_SEARCH_OPTIMIZATION.md`](docs/audits/PHASE_10_SEMANTIC_SEARCH_OPTIMIZATION.md)** | $L_2$ Unit Normalization Equivalence, ONNX graph tuning, and concurrent hybrid search |
+| **[`docs/audits/PHASE_10_EXACT_VS_ANN_EVALUATION.md`](docs/audits/PHASE_10_EXACT_VS_ANN_EVALUATION.md)** | Dense vector search scalability ($N=100 \dots 10,000$) and Flat Exact vs. HNSW trade-off matrix |
+| **[`docs/audits/PHASE_10_INDEXING_THROUGHPUT_OPTIMIZATION.md`](docs/audits/PHASE_10_INDEXING_THROUGHPUT_OPTIMIZATION.md)** | SQL batching, fine-grained term mutex locking, and Project Loom batch ingestion |
+| **[`docs/audits/PHASE_10_SEARCH_BOTTLENECK_ANALYSIS.md`](docs/audits/PHASE_10_SEARCH_BOTTLENECK_ANALYSIS.md)** | Microsecond phase attribution, latency histograms, and heap allocation profiles |
 | **[`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)** | Subsystem architecture, data contracts, and class-level interactions |
 | **[`docs/architecture/DATA_FLOW.md`](docs/architecture/DATA_FLOW.md)** | End-to-end data lifecycle sequences for crawling, indexing, and retrieval |
 | **[`docs/api/SEARCH_API.md`](docs/api/SEARCH_API.md)** | Complete REST API specification for BM25, autocomplete, spelling suggestions, Boolean, and filtered search |
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 9 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 10 |
 | **[`docs/PHASE_9_COMPLETE_GUIDE.md`](docs/PHASE_9_COMPLETE_GUIDE.md)** | Masterclass technical guide, concurrency architecture, chaos engineering, and 50-thread stress results for Phase 9 |
 | **[`docs/phases/PHASE_8_INDEX_LIFECYCLE.md`](docs/phases/PHASE_8_INDEX_LIFECYCLE.md)** | Complete guide to Document Lifecycle State Machine, Staged Two-Phase Transactions, Reconciliation Audit, and Self-Healing Repair |
 | **[`docs/PHASE_8_COMPLETE_GUIDE.md`](docs/PHASE_8_COMPLETE_GUIDE.md)** | Masterclass technical guide and staff-engineer talking points for Phase 8 |
@@ -702,7 +777,7 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 - **[CONTRIBUTING.md](CONTRIBUTING.md):** Guidelines for code style, branching, pull requests, and test expectations.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Contributor standards and inclusive community pledges.
 - **[SECURITY.md](SECURITY.md):** Vulnerability reporting and disclosure protocols.
-- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 8.
+- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 10.
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml):** Automated GitHub Actions CI workflow running Java 21 test suites on every pull request.
 - **[.github/workflows/pages.yml](.github/workflows/pages.yml):** Automated GitHub Pages deployment workflow for the interactive `docs-site/`.
 

@@ -4,12 +4,16 @@ import com.searchforge.indexer.entity.IndexedTerm;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface IndexedTermRepository extends JpaRepository<IndexedTerm, Long> {
 
     Optional<IndexedTerm> findByTerm(String term);
+
+    List<IndexedTerm> findAllByTermIn(Collection<String> terms);
 
     boolean existsByTerm(String term);
 }
