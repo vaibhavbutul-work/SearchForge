@@ -13,6 +13,6 @@ A clear summary of what this pull request modifies, adds, or fixes in SearchForg
 
 ## 🧪 Testing Checklist
 - [ ] Maven test suite executed locally (`./mvnw test`)
-- [ ] All 497+ automated tests pass with 0 failures
+- [ ] All 552+ automated tests pass with 0 failures (539 backend + 13 frontend)
 - [ ] No regression in sub-millisecond search latencies
 - [ ] No secrets or `.env` credentials committed

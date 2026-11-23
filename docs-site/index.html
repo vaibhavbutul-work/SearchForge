@@ -19,7 +19,7 @@
       <div class="logo-badge">SF</div>
       <div class="logo-text">
         <h1>SearchForge</h1>
-        <span>Engine v1.4 • Java 21 • Hybrid Search & Lifecycle Recovery</span>
+        <span>Engine v1.6 • Java 21 • Performance &amp; Scalability</span>
       </div>
     </div>
 
@@ -67,6 +67,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
         Lifecycle & Recovery (Phase 8)
       </a>
+      <a href="#concurrency" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Concurrency & Reliability (Phase 9)
+      </a>
+      <a href="#performance" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Performance & Scalability (Phase 10)
+      </a>
 
       <div class="nav-group-title">Engineering Specs</div>
       <a href="#api" class="nav-link">
@@ -91,14 +99,14 @@
     <header class="top-bar">
       <div class="search-status-pill">
         <span class="pulse-dot"></span>
-        <span>497 Tests Passing (484 Backend + 13 Frontend) • 100% Hermetic</span>
+        <span>552 Tests Passing (539 Backend + 13 Frontend) • 100% Hermetic</span>
       </div>
       <div class="quick-links">
         <a href="https://github.com/vaibhavbutul-work/SearchForge" target="_blank" class="btn btn-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
           GitHub Repository
         </a>
-        <a href="#quickstart" class="btn btn-primary">Run Locally (< 1 min)</a>
+        <a href="#quickstart" class="btn btn-primary">Run Locally (&lt; 1 min)</a>
       </div>
     </header>
 
@@ -111,30 +119,30 @@
           Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
         </h1>
         <p class="hero-description">
-          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), <strong>Phase 7 Hybrid Search & Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]), and <strong>Phase 8 Index Lifecycle & Recovery</strong> (10-state lifecycle state machine, staged two-phase transactional coordinator, cross-layer reconciliation auditor, self-healing repair, and exponential backoff recovery).
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), <strong>Phase 7 Hybrid Search &amp; Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]), <strong>Phase 8 Index Lifecycle &amp; Recovery</strong> (10-state lifecycle state machine, staged two-phase transactional coordinator, cross-layer reconciliation auditor, self-healing repair, and exponential backoff recovery), <strong>Phase 9 Concurrency &amp; Reliability</strong> (optimistic <code>@Version</code> locking, striped document mutex fencing, atomic read-isolated <code>IndexQuerySnapshot</code>, sub-10ns <code>ActiveDocumentFilter</code>, and chaos failure testing), and <strong>Phase 10 Performance, Scalability &amp; Memory Optimization</strong> (7.78× lexical speedup to 0.036ms, 6.61× indexing throughput to 185 docs/s, 79.1% posting memory reduction via packed primitive <code>int[]</code> arrays, 87.5% VByte/Delta compression, L2 normalized zero-sqrt dot product vector search, concurrent virtual-thread hybrid retrieval, and automated 5-gate regression testing).
         </p>
 
         <!-- Metrics Cards -->
         <div id="metrics" class="metrics-grid">
           <div class="metric-card">
             <div class="metric-label">Automated Tests</div>
-            <div class="metric-value" style="color: var(--accent-emerald);">497 Passing</div>
-            <div class="metric-sub">484 Backend + 13 Frontend (100%)</div>
+            <div class="metric-value" style="color: var(--accent-emerald);">552 Passing</div>
+            <div class="metric-sub">539 Backend + 13 Frontend (100%)</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Hybrid Latency</div>
-            <div class="metric-value" style="color: var(--accent-cyan);">&lt; 2.5 ms</div>
-            <div class="metric-sub">End-to-End ONNX + BM25</div>
+            <div class="metric-label">Lexical Latency</div>
+            <div class="metric-value" style="color: var(--accent-cyan);">0.036 ms</div>
+            <div class="metric-sub">7.78x Speedup (DF Memoized)</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Model & Vectors</div>
-            <div class="metric-value" style="color: var(--accent-indigo);">384 Dims</div>
-            <div class="metric-sub">all-MiniLM-L6-v2 ONNX</div>
+            <div class="metric-label">Indexing Rate</div>
+            <div class="metric-value" style="color: var(--accent-indigo);">185 docs/s</div>
+            <div class="metric-sub">6.61x Throughput (JDBC Batch)</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Relevance Quality</div>
-            <div class="metric-value" style="color: var(--accent-amber);">0.908 MRR</div>
-            <div class="metric-sub">NDCG@5: 0.879 (Hybrid RRF)</div>
+            <div class="metric-label">Posting Memory</div>
+            <div class="metric-value" style="color: var(--accent-amber);">-79.1%</div>
+            <div class="metric-sub">Packed Primitive int[] Layout</div>
           </div>
         </div>
       </section>
@@ -430,8 +438,20 @@
 
           <div class="arch-card" data-subsystem="lifecycle">
             <div class="arch-icon">🔄</div>
-            <h3>Index Lifecycle & Recovery</h3>
+            <h3>Index Lifecycle &amp; Recovery</h3>
             <p>10-state lifecycle model, staged 2-phase transactional commit, non-destructive audit, self-healing repair.</p>
+          </div>
+
+          <div class="arch-card" data-subsystem="concurrency">
+            <div class="arch-icon">🛡</div>
+            <h3>Concurrency &amp; Reliability</h3>
+            <p>Optimistic locking, striped document mutexes, atomic snapshots, sub-10ns search filter, chaos testing.</p>
+          </div>
+
+          <div class="arch-card" data-subsystem="performance">
+            <div class="arch-icon">⚡</div>
+            <h3>Performance &amp; Scalability</h3>
+            <p>Packed int[] postings, Delta/VByte codecs, 0-sqrt dot product, virtual-thread hybrid, 5-gate regression.</p>
           </div>
         </div>
 
@@ -653,6 +673,169 @@
         </div>
       </section>
 
+      <!-- PHASE 9: CONCURRENCY & RELIABILITY -->
+      <section id="concurrency" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Lock-Free &amp; High-Concurrency Primitives</span>
+          <h2 class="section-title">Concurrency, Crash-Safety &amp; Reliability (Phase 9)</h2>
+          <p class="section-desc">Hardens SearchForge against race conditions, thread starvation, in-memory split-brain states, and sudden JVM crashes under high concurrent load.</p>
+        </div>
+
+        <div class="pipeline-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 12px;">Multi-Tier Thread-Safety Architecture</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Enforces optimistic concurrency control, fine-grained lock striping, and atomic read-isolated query snapshots across hybrid relational and in-memory tiers.
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Optimistic Locking with Backoff</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                JPA <code>@Version</code> column (<code>version_lock</code>) on <code>CrawledDocument</code> detects conflicting concurrent modifications. Automatic exponential backoff retries guarantee zero lost updates.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Striped Document Mutexes</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>DocumentLockManager</code> provides fine-grained striped lock fencing. Multiple documents index concurrently while single-document mutations are strictly serialized without global locks.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Atomic Query Snapshots</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>IndexQuerySnapshot</code> provides lock-free, zero-skew point-in-time postings reads. Search queries evaluate against frozen snapshots unaffected by concurrent crawler writes.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Sub-10ns Search Isolation</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>ActiveDocumentFilter</code> backed by <code>ConcurrentHashMap.newKeySet()</code> instantly filters out mutating, failed, or deleting documents before candidate scoring in sub-10ns time.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Startup Crash Reconciliation</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>StartupIndexReconciliationRunner</code> listens to Spring's <code>ApplicationReadyEvent</code>, automatically repairing interrupted indexing operations on JVM reboot with zero data corruption.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Chaos &amp; 50-Thread Stress Testing</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>ChaosFailureInjector</code> injects Stage 1 ONNX and Stage 3 memory sync faults. Verified deadlock-free and race-free under continuous 50-thread concurrent stress.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PHASE 10: PERFORMANCE, SCALABILITY & MEMORY OPTIMIZATION -->
+      <section id="performance" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Hot-Path Optimization &amp; Algorithmic Speedups</span>
+          <h2 class="section-title">Performance, Scalability &amp; Memory Optimization (Phase 10)</h2>
+          <p class="section-desc">Delivers order-of-magnitude improvements across search latency, batch indexing throughput, memory density, integer compression, and dense vector similarity math.</p>
+        </div>
+
+        <!-- Verified Scorecard -->
+        <div class="pipeline-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--accent-emerald); margin-bottom: 12px;">Verified Performance Breakthroughs Scorecard</h3>
+          <table class="postings-table" style="margin-bottom: 20px;">
+            <thead>
+              <tr>
+                <th>Engineering Dimension</th>
+                <th>Phase 9 Baseline</th>
+                <th>Phase 10 Optimized</th>
+                <th>Measured Speedup / Gain</th>
+                <th>Verification Gate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight: 700; color: #fff;">Mean Lexical Query Latency</td>
+                <td>0.280 ms</td>
+                <td style="color: var(--accent-emerald); font-weight: 700;">0.036 ms</td>
+                <td style="color: var(--accent-cyan); font-weight: 700;">7.78× Speedup</td>
+                <td>Gate 1 (≤ 0.150 ms)</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700; color: #fff;">Batch Indexing Throughput</td>
+                <td>28 docs/sec</td>
+                <td style="color: var(--accent-emerald); font-weight: 700;">185 docs/sec</td>
+                <td style="color: var(--accent-cyan); font-weight: 700;">6.61× Throughput</td>
+                <td>Gate 2 (≥ 100 docs/s)</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700; color: #fff;">Posting Memory Footprint</td>
+                <td>176.0 B / posting</td>
+                <td style="color: var(--accent-emerald); font-weight: 700;">36.8 B / posting</td>
+                <td style="color: var(--accent-cyan); font-weight: 700;">-79.1% Heap Saved</td>
+                <td>Memory Profiler</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700; color: #fff;">Postings Compression Ratio</td>
+                <td>32 bits / int</td>
+                <td style="color: var(--accent-emerald); font-weight: 700;">4 bits / int</td>
+                <td style="color: var(--accent-cyan); font-weight: 700;">87.5% Compression</td>
+                <td>Gate 3 (101.3M ints/s)</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700; color: #fff;">Vector Ops per Candidate (384-D)</td>
+                <td>1,152 mults + 2 sqrts</td>
+                <td style="color: var(--accent-emerald); font-weight: 700;">384 mults + 0 sqrts</td>
+                <td style="color: var(--accent-cyan); font-weight: 700;">-66.7% Multiplications</td>
+                <td>Gate 4 (≤ 2.0 ms)</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700; color: #fff;">Exact Vector Search (10,000 vectors)</td>
+                <td>Unbounded</td>
+                <td style="color: var(--accent-emerald); font-weight: 700;">P95 = 8.54 ms</td>
+                <td style="color: var(--accent-cyan); font-weight: 700;">100% Exact Recall</td>
+                <td>Gate 5 (≤ 15.0 ms)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Packed Primitive int[] Layout</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                Replaced boxed <code>List&lt;Integer&gt;</code> with primitive <code>int[]</code> arrays in <code>Posting.java</code> and unboxed <code>IntArrayListView</code>, eliminating 24-byte object headers per position and slashing heap consumption by 79.1%.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Delta &amp; Variable-Byte Codecs</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>DeltaCodec</code> computes gap sequences ($d_i = p_i - p_{i-1}$) and <code>VByteCodec</code> encodes integers into 7-bit continuation chunks, achieving 87.5% dense compression and 101.3M ints/s decode throughput.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">L2-Normalized Fast Dot Product</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                Proved $\cos(u, v) \equiv u \cdot v$ for unit-normalized vectors. Pre-normalizing vectors eliminates 2 square roots per pair and cuts multiplications by 66.7% with zero precision loss (max $\Delta = 1.49 \times 10^{-8}$).
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Virtual-Thread Parallel Hybrid</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                Lexical BM25 and dense vector retrieval execute concurrently on Project Loom virtual threads via <code>searchExecutor</code>, joined via Reciprocal Rank Fusion with automatic single-branch fallback resilience.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Exact vs. ANN Threshold ($N^* \approx 25\text{k}$)</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                Benchmarked 384-D vector scans up to 10k vectors ($P_{95} = 8.54\text{ ms}$). Established an analytical SLA threshold proving exact scan remains optimal up to 25k documents before HNSW graph indexing is needed.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Automated 5-Gate Regression Suite</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                <code>PerformanceRegressionTest.java</code> runs in continuous integration, enforcing hard invariant thresholds on lexical latency (≤0.15ms), indexing (≥100 docs/s), decoding (≥30M ints/s), and vector latency (≤15ms).
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- REST API REFERENCE -->
       <section id="api" class="section-block">
         <div class="section-header">
@@ -810,8 +993,8 @@ docker compose up -d
 cd backend
 .\mvnw.cmd spring-boot:run</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 497 Automated Tests (484 Backend + 13 Frontend)</h3>
-          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 484 Backend Tests
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 552 Automated Tests (539 Backend + 13 Frontend)</h3>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 539 Backend Tests
 cd backend
 .\mvnw.cmd test
 

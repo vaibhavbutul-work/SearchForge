@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/searchforge-hero-banner.svg?v=521" alt="SearchForge Hero Banner" width="100%">
+  <img src="docs/assets/searchforge-hero-banner.svg?v=552" alt="SearchForge Hero Banner" width="100%">
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/metrics-badge-summary.svg?v=521" alt="SearchForge Production Metrics Dashboard" width="100%">
+  <img src="docs/assets/metrics-badge-summary.svg?v=552" alt="SearchForge Production Metrics Dashboard" width="100%">
 </p>
 
 ---
@@ -695,7 +695,7 @@ SearchForge includes an in-memory H2 development profile with 24 multi-domain en
 ```bash
 cd backend
 
-# Run all 484 backend tests in-memory
+# Run all 539 backend tests in-memory
 ./mvnw test
 
 # Launch the server with the dev profile (H2 in-memory DB)
@@ -756,6 +756,9 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
 | **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 10 |
+| **[`docs/phases/PHASE_10_PERFORMANCE_SCALABILITY.md`](docs/phases/PHASE_10_PERFORMANCE_SCALABILITY.md)** | Complete milestone specification and execution roadmap for Phase 10 Performance & Scalability |
+| **[`docs/PHASE_10_COMPLETE_GUIDE.md`](docs/PHASE_10_COMPLETE_GUIDE.md)** | Masterclass technical guide, packed primitives, VByte codecs, vector math proofs, and regression gates for Phase 10 |
+| **[`docs/phases/PHASE_9_CONCURRENCY_RELIABILITY.md`](docs/phases/PHASE_9_CONCURRENCY_RELIABILITY.md)** | Complete milestone specification for Phase 9 Concurrency & Reliability |
 | **[`docs/PHASE_9_COMPLETE_GUIDE.md`](docs/PHASE_9_COMPLETE_GUIDE.md)** | Masterclass technical guide, concurrency architecture, chaos engineering, and 50-thread stress results for Phase 9 |
 | **[`docs/phases/PHASE_8_INDEX_LIFECYCLE.md`](docs/phases/PHASE_8_INDEX_LIFECYCLE.md)** | Complete guide to Document Lifecycle State Machine, Staged Two-Phase Transactions, Reconciliation Audit, and Self-Healing Repair |
 | **[`docs/PHASE_8_COMPLETE_GUIDE.md`](docs/PHASE_8_COMPLETE_GUIDE.md)** | Masterclass technical guide and staff-engineer talking points for Phase 8 |

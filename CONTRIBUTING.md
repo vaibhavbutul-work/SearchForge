@@ -24,7 +24,7 @@ SearchForge implements all search subsystems from scratch.
 git clone https://github.com/vaibhavbutul-work/SearchForge.git
 cd SearchForge/backend
 
-# Verify all 484 backend tests pass
+# Verify all 539 backend tests pass
 ./mvnw test
 ```
 
