@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/searchforge-hero-banner.svg?v=657" alt="SearchForge Hero Banner" width="100%">
+  <img src="docs/assets/searchforge-hero-banner.svg?v=719" alt="SearchForge Hero Banner" width="100%">
 </p>
 
 <p align="center">
@@ -7,13 +7,14 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-657%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="657 Tests Passing"></a>
-  <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%200.908%20%7C%20NDCG@3%200.865-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-719%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="719 Tests Passing"></a>
+  <a href="#-search-quality-evaluation--relevance-engineering-phase-12"><img src="https://img.shields.io/badge/Evaluation-NDCG@10%200.945%20%7C%20MRR%200.979-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
 <p align="center">
   <a href="https://vaibhavbutul-work.github.io/SearchForge/"><strong>🌐 Launch Live Interactive Documentation Website</strong></a> •
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
+  <a href="#-search-quality-evaluation--relevance-engineering-phase-12"><strong>Relevance & IR Rigor</strong></a> •
   <a href="#-security-engineering-api-hardening--production-security-phase-11"><strong>Security & Hardening</strong></a> •
   <a href="#-performance--scalability-engineering-phase-10"><strong>Performance Engineering</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
@@ -36,7 +37,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/metrics-badge-summary.svg?v=657" alt="SearchForge Production Metrics Dashboard" width="100%">
+  <img src="docs/assets/metrics-badge-summary.svg?v=719" alt="SearchForge Production Metrics Dashboard" width="100%">
 </p>
 
 ---
@@ -534,6 +535,31 @@ Phase 11 establishes a comprehensive, 7-layer Defense-in-Depth security architec
 
 ---
 
+## 📊 Search Quality Evaluation & Relevance Engineering (Phase 12)
+
+Phase 12 introduces formal Information Retrieval (IR) evaluation and relevance engineering, validating SearchForge's ranking quality across multi-modal retrieval pipelines using a 120-document corpus and 48 benchmark queries across 8 distinct archetypes:
+
+### 1. Master Retrieval Modality Comparison (N=48 Benchmark Queries)
+| Retrieval Mode | NDCG@5 | NDCG@10 | MAP | MRR | Precision@5 | Latency (Mean) | Single-Thread QPS |
+|---|---|---|---|---|---|---|---|
+| **BM25 Lexical** | 0.8992 | 0.9094 | 0.8854 | 0.9688 | 0.2917 | **0.028 ms** | **35,449.6** |
+| **Dense Semantic** | 0.9272 | **0.9468** | **0.9230** | **0.9844** | **0.3167** | 2.410 ms | 415.0 |
+| **Multi-Modal Hybrid (RRF)** | **0.9303** | 0.9448 | 0.9210 | 0.9792 | 0.3083 | 2.554 ms | 391.6 |
+
+### 2. Archetype Breakdown & Mutual Insurance
+* **Ambiguity & Polysemy Resolution:** Pure BM25 collapses on `AMBIGUOUS` queries ($\text{NDCG}@5 = 0.7315$) due to term frequency equality across disparate meanings. Dense Semantic search disambiguates context, elevating performance to $0.9109$. Hybrid RRF achieves the highest score ($0.9160$, a **$+25.2\%$ boost** over BM25).
+* **Exact Keyword Fidelity:** BM25 and Hybrid achieve $\text{NDCG}@5 = 0.9558$ on `EXACT_KEYWORD` queries containing rare acronyms and function identifiers, protecting against semantic token dilution.
+* **Semantic Drift Elimination:** On multi-sentence `CONCEPTUAL` queries, dense embeddings suffer from semantic drift ($0.7477$ vs BM25 $0.8222$). Hybrid RRF anchors semantic candidates to lexical inverted postings, restoring performance to $0.8099$.
+
+### 3. Blind Holdout Validation & Parameter Optimization
+* **Overfitting Prevention:** Executed 18 parameter trials across $k_1, b$ and RRF constants. Discovered that tilting weights toward semantic search ($1.2\times$) improved tuning queries but caused a $-0.0066$ NDCG regression on blind holdout `EVAL` queries. Equal weighting ($1.0 : 1.0$) with Cormack's $k=60$ was certified as the robust production standard.
+
+### 4. Automated 5-Gate Quality Regression Suite with Mutation Testing
+* **Hard Metric Floors:** Automated gates enforce $\text{NDCG}@10 \ge 0.930, \text{NDCG}@5 \ge 0.910, \text{MAP} \ge 0.900, \text{MRR} \ge 0.950$.
+* **Mutation Fault Injection:** Deliberately inverts and shuffles candidate rankings in CI to verify that ranking corruptions reliably fail tests, guaranteeing zero silent relevance regressions.
+
+---
+
 ## 🎨 Complete Frontend Web Application (Phase 6)
 
 SearchForge includes a decoupled, modern search interface built in React 18 and Vite 6 (`frontend/`):
@@ -611,17 +637,27 @@ SearchForge includes a decoupled, modern search interface built in React 18 and 
 
 ---
 
-## 🧪 Automated Testing Audit (657 Tests: 644 Backend + 13 Frontend)
+## 🧪 Automated Testing Audit (719 Tests: 706 Backend + 13 Frontend)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 644, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~37.0s)
+[INFO] Tests run: 706, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~1m 16s)
 
 ℹ tests 13, pass 13, fail 0 (Total time: ~79ms)
 ```
 
-SearchForge includes **657 hermetic automated tests (644 Backend + 13 Frontend)** across all subsystems:
+SearchForge includes **719 hermetic automated tests (706 Backend + 13 Frontend)** across all subsystems:
+- **Phase 12 Search Quality Evaluation & Relevance Engineering (54 tests):**
+  - `SearchForgeEvaluationDatasetTest`: 6 tests verifying the 120-document corpus, 48 benchmark queries across 8 archetypes, $[0, 3]$ graded relevance scale, and split partition isolation (`DEV`, `TUNING`, `EVAL`).
+  - `InformationRetrievalMetricsTest`: 27 tests validating mathematical implementations of Precision@K, Recall@K, $F_1@K$, Mean Reciprocal Rank (MRR), Mean Average Precision (MAP), DCG@K, IDCG@K, and NDCG@K with zero-division protection and candidate deduplication.
+  - `Bm25RelevanceEvaluatorTest`: 7 tests validating lexical baseline evaluation ($k_1=1.20, b=0.75$), verifying performance on exact keywords and exposing polysemy failure on ambiguous queries ($0.7315$).
+  - `SemanticRelevanceEvaluatorTest`: 5 tests verifying dense transformer semantic retrieval (`all-MiniLM-L6-v2`), ambiguity resolution ($+24.5\%$), and semantic drift diagnostics.
+  - `HybridRelevanceEvaluatorTest`: 4 tests validating 3-way benchmark execution, Reciprocal Rank Fusion ($k=60$), consensus boosting, and mutual insurance.
+  - `RankingTuningExperimentRunnerTest`: 4 tests validating the 18-trial parameter grid and blind holdout validation on the `EVAL` split, proving overfitting risks of semantic weight tilting.
+  - `RelevanceLatencyProfilerTest`: 3 tests profiling sub-component latency (BM25: $0.028\text{ ms}$, Semantic: $2.41\text{ ms}$, Hybrid: $2.55\text{ ms}$), throughput ($35k$ vs $391\text{ QPS}$), and Pareto optimality.
+  - `SearchQualityRegressionSuiteTest`: 6 tests enforcing the 5-gate quality guardrails and verifying mutation fault injection (reversing rankings, shuffling, irrelevant docs).
+  - `SearchForgeEvaluationReportRunnerTest`: 1 test verifying master evaluation audit generation and production-grade certification.
 - **Phase 11 Security Engineering, API Hardening & Production Security (105 tests):**
   - `ApiKeyAuthenticationFilterTest`: 31 tests verifying API key parsing, path matching, constant-time byte comparisons (`MessageDigest.isEqual`), and timing safety.
   - `AdminSecurityIntegrationTest`: 7 tests verifying MockMvc authorization barriers across all protected administrative endpoints (`/index/**`, `/lifecycle/**`, `/crawler/**`).
@@ -795,7 +831,10 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 11 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 12 |
+| **[`docs/evaluation/FINAL_SEARCH_QUALITY_EVALUATION_REPORT.md`](docs/evaluation/FINAL_SEARCH_QUALITY_EVALUATION_REPORT.md)** | **Phase 12 Master Final Search Quality Evaluation & Relevance Engineering Report** |
+| **[`docs/PHASE_12_COMPLETE_GUIDE.md`](docs/PHASE_12_COMPLETE_GUIDE.md)** | Masterclass technical guide, 120-doc benchmark, formal IR metrics, holdout splits, and 5-gate regression suite for Phase 12 |
+| **[`docs/phases/PHASE_12_SEARCH_QUALITY_EVALUATION.md`](docs/phases/PHASE_12_SEARCH_QUALITY_EVALUATION.md)** | Complete milestone specification and execution roadmap for Phase 12 Search Quality Evaluation |
 | **[`docs/security/PHASE_11_SECURITY_AUDIT_REPORT.md`](docs/security/PHASE_11_SECURITY_AUDIT_REPORT.md)** | **Phase 11 Master Capstone Security Audit Report & STRIDE Mitigation Matrix** |
 | **[`docs/security/PRODUCTION_HARDENING_GUIDE.md`](docs/security/PRODUCTION_HARDENING_GUIDE.md)** | Production Hardening, Nginx TLS 1.3 Reverse Proxy, Zero-Downtime Key Rotation & Playbooks |
 | **[`docs/security/THREAT_MODEL_AUDIT.md`](docs/security/THREAT_MODEL_AUDIT.md)** | Initial Phase 11 STRIDE Threat Catalog and Baseline Vulnerability Audit |
@@ -825,7 +864,7 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 - **[CONTRIBUTING.md](CONTRIBUTING.md):** Guidelines for code style, branching, pull requests, and test expectations.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Contributor standards and inclusive community pledges.
 - **[SECURITY.md](SECURITY.md):** Vulnerability reporting and disclosure protocols.
-- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 11.
+- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 12.
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml):** Automated GitHub Actions CI workflow running Java 21 test suites on every pull request.
 - **[.github/workflows/pages.yml](.github/workflows/pages.yml):** Automated GitHub Pages deployment workflow for the interactive `docs-site/`.
 
