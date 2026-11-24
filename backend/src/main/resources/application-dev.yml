@@ -10,6 +10,7 @@ spring:
     hikari:
       pool-name: SearchForgeDevPool
       initialization-fail-timeout: 0
+      leak-detection-threshold: 30000
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
@@ -31,3 +32,19 @@ crawler:
   max-pages: 15
   crawl-delay-ms: 1000
   concurrency: 2
+
+searchforge:
+  security:
+    enabled: true
+    admin-api-key: "sf-dev-admin-key-2026"
+    crawler:
+      ssrf-protection-enabled: true
+      block-private-ips: true
+      max-redirects: 3
+    rate-limit:
+      enabled: true
+      search-requests-per-minute: 120
+      search-burst-capacity: 40
+      admin-requests-per-minute: 30
+      admin-burst-capacity: 10
+

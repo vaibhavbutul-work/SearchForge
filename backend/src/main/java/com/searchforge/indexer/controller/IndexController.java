@@ -47,8 +47,13 @@ public class IndexController {
      * Synchronizes unindexed documents from the crawling database into the inverted index.
      */
     @PostMapping("/index/build")
-    public ResponseEntity<CorpusSyncResult> buildIndex(
+    public ResponseEntity<?> buildIndex(
             @RequestParam(name = "batchSize", defaultValue = "100") int batchSize) {
+        if (batchSize < 1 || batchSize > 1000) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Parameter 'batchSize' must be between 1 and 1000"
+            ));
+        }
         CorpusSyncResult result = indexingEngine.synchronizeCorpus(batchSize);
         return ResponseEntity.ok(result);
     }

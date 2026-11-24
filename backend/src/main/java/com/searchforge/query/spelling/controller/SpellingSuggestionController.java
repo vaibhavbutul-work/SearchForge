@@ -18,6 +18,8 @@ import java.util.Objects;
 @RequestMapping("/api/v1/search/suggest")
 public class SpellingSuggestionController {
 
+    public static final int MAX_SUGGEST_LENGTH = 200;
+
     private final SpellingCorrectionService spellingCorrectionService;
 
     public SpellingSuggestionController(SpellingCorrectionService spellingCorrectionService) {
@@ -39,6 +41,12 @@ public class SpellingSuggestionController {
         if (query == null || query.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Query parameter 'q' must not be blank"
+            ));
+        }
+
+        if (query.length() > MAX_SUGGEST_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Query parameter 'q' must not exceed " + MAX_SUGGEST_LENGTH + " characters"
             ));
         }
 

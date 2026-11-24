@@ -24,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -69,7 +70,13 @@ public class IndexLifecycleAdminController {
      * Retrieves the lifecycle state and embedding consistency of a document.
      */
     @GetMapping("/status/{docId}")
-    public ResponseEntity<LifecycleStatusResponse> getDocumentStatus(@PathVariable Long docId) {
+    public ResponseEntity<?> getDocumentStatus(@PathVariable Long docId) {
+        if (docId == null || docId <= 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Document ID must be a positive integer"
+            ));
+        }
+
         Optional<CrawledDocument> docOpt = crawledDocumentRepository.findById(docId);
         if (docOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -98,7 +105,13 @@ public class IndexLifecycleAdminController {
      * Triggers manual re-indexing and embedding regeneration for a document.
      */
     @PostMapping("/reindex/{docId}")
-    public ResponseEntity<DocumentReindexResponse> reindexDocument(@PathVariable Long docId) {
+    public ResponseEntity<?> reindexDocument(@PathVariable Long docId) {
+        if (docId == null || docId <= 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Document ID must be a positive integer"
+            ));
+        }
+
         Optional<CrawledDocument> docOpt = crawledDocumentRepository.findById(docId);
         if (docOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -126,10 +139,16 @@ public class IndexLifecycleAdminController {
      * Deletes a document and immediately removes it from lexical and semantic indexes.
      */
     @DeleteMapping("/{docId}")
-    public ResponseEntity<DocumentDeletionResponse> deleteDocument(
+    public ResponseEntity<?> deleteDocument(
             @PathVariable Long docId,
             @RequestParam(defaultValue = "false") boolean hard
     ) {
+        if (docId == null || docId <= 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Document ID must be a positive integer"
+            ));
+        }
+
         long startTime = System.currentTimeMillis();
         DeletionResult result = deletionService.deleteDocument(docId, hard);
         long durationMs = System.currentTimeMillis() - startTime;

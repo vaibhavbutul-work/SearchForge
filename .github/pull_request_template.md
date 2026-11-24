@@ -8,11 +8,12 @@ A clear summary of what this pull request modifies, adds, or fixes in SearchForg
 - [ ] Boolean Retrieval AST Engine (`com.searchforge.indexer.retrieval`)
 - [ ] BM25 Scoring & Ranking Engine (`com.searchforge.ranking`)
 - [ ] Query Intelligence & Search Experience (`com.searchforge.query`)
+- [ ] Security & API Hardening (`com.searchforge.security` / `crawler.security`)
 - [ ] REST API & Telemetry (`com.searchforge.*.controller`)
 - [ ] Documentation / Visualizations (`docs/` / `docs-site/`)
 
 ## 🧪 Testing Checklist
 - [ ] Maven test suite executed locally (`./mvnw test`)
-- [ ] All 552+ automated tests pass with 0 failures (539 backend + 13 frontend)
+- [ ] All 657+ automated tests pass with 0 failures (644 backend + 13 frontend)
 - [ ] No regression in sub-millisecond search latencies
 - [ ] No secrets or `.env` credentials committed

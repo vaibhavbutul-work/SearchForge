@@ -10,6 +10,7 @@ spring:
     hikari:
       pool-name: SearchForgeTestPool
       initialization-fail-timeout: 0
+      leak-detection-threshold: 30000
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
@@ -34,4 +35,16 @@ ranking:
   bm25:
     k1: 1.2
     b: 0.75
+
+searchforge:
+  security:
+    enabled: false
+    admin-api-key: "sf-test-admin-key"
+    crawler:
+      ssrf-protection-enabled: true
+      block-private-ips: false
+      max-redirects: 3
+    rate-limit:
+      enabled: false
+
 

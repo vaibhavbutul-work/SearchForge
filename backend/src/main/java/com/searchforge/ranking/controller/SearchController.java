@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/search")
 public class SearchController {
 
+    public static final int MAX_QUERY_LENGTH = 500;
+
     private final RankedRetrievalEngine rankedRetrievalEngine;
     private final RankedBooleanQueryEngine rankedBooleanQueryEngine;
     private final CrawledDocumentRepository crawledDocumentRepository;
@@ -231,6 +233,11 @@ public class SearchController {
                     "error", "Filter parameter 'filter' must not be blank"
             ));
         }
+        if (filter.length() > MAX_QUERY_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Filter parameter 'filter' must not exceed " + MAX_QUERY_LENGTH + " characters"
+            ));
+        }
 
         try {
             long startNs = System.nanoTime();
@@ -251,6 +258,11 @@ public class SearchController {
         if (query == null || query.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Search query parameter 'q' must not be blank"
+            ));
+        }
+        if (query.length() > MAX_QUERY_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Search query parameter 'q' must not exceed " + MAX_QUERY_LENGTH + " characters"
             ));
         }
         if (limit < 1 || limit > 100) {

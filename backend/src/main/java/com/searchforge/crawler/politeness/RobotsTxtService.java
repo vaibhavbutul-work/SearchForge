@@ -26,10 +26,17 @@ public class RobotsTxtService {
     private static final Duration CACHE_TTL = Duration.ofHours(24);
 
     private final CrawlerProperties properties;
+    private final com.searchforge.crawler.security.SafeDnsResolver dnsResolver;
     private final Map<String, RobotsTxtRules> cache = new ConcurrentHashMap<>();
 
-    public RobotsTxtService(CrawlerProperties properties) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public RobotsTxtService(CrawlerProperties properties, com.searchforge.crawler.security.SafeDnsResolver dnsResolver) {
         this.properties = properties;
+        this.dnsResolver = dnsResolver;
+    }
+
+    public RobotsTxtService(CrawlerProperties properties) {
+        this(properties, new com.searchforge.crawler.security.SafeDnsResolver(new com.searchforge.crawler.security.IpRangeValidator(false), Set.of()));
     }
 
     /**
@@ -110,6 +117,11 @@ public class RobotsTxtService {
     private RobotsTxtRules fetchAndParseRobotsTxt(String scheme, String domain, int port) {
         String baseScheme = (scheme != null && !scheme.isBlank()) ? scheme.toLowerCase(Locale.ROOT) : "https";
         String robotsUrl = baseScheme + "://" + domain + (port > 0 ? ":" + port : "") + "/robots.txt";
+
+        if (dnsResolver != null && !dnsResolver.isSafeUrl(robotsUrl)) {
+            log.warn("Blocked SSRF attempt: Prohibited or unsafe robots.txt URL '{}'", robotsUrl);
+            return RobotsTxtRules.disallowAll();
+        }
 
         log.debug("Fetching robots.txt from: {}", robotsUrl);
 

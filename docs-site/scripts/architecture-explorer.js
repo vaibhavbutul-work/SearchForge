@@ -165,6 +165,23 @@ const ARCH_SUBSYSTEMS = {
     inputs: "Lexical queries, raw posting arrays, 384-D dense vectors, batch document collections",
     outputs: "0.036ms lexical search, 185 docs/s ingestion, compressed byte buffers, 8.54ms 10k vector P95",
     patterns: "Zero-Allocation Primitives, Gap & Variable-Byte Compression, SIMD Math, Automated Quality Gates"
+  },
+  "security": {
+    name: "Security Engineering & API Hardening (Phase 11)",
+    package: "com.searchforge.security, com.searchforge.crawler.security",
+    responsibility: "Guards against unauthorized administrative access, SSRF, DoS query floods, timing attacks, and information disclosure across 7 defense-in-depth layers.",
+    classes: [
+      "RateLimitingFilter: Lock-free monotonic TokenBucket filter (SEARCH: 60/m, ADMIN: 10/m) at HIGHEST_PRECEDENCE + 5",
+      "ApiKeyAuthenticationFilter: Constant-time byte equality auth (MessageDigest.isEqual) at HIGHEST_PRECEDENCE + 10",
+      "SafeDnsResolver: Pre-flight multi-homed DNS inspector enforcing web schemes and standard ports",
+      "IpRangeValidator: Network sandbox blocking loopback, RFC 1918 private subnets, and cloud metadata (169.254.169.254)",
+      "GlobalExceptionHandler: RFC 7807 problem details handler masking SQL and internal schema details",
+      "SecurityStartupValidator: ApplicationReady pre-flight validator halting boots on default secrets",
+      "SecurityRegressionSuiteTest: Automated 6-gate continuous regression test suite"
+    ],
+    inputs: "Inbound HTTP headers (X-API-KEY, X-Forwarded-For), crawl seed URLs, query parameters",
+    outputs: "Sanitized responses, HTTP 401/429 status codes, RFC 7807 ApiErrorResponse, safe outbound HTTP connections",
+    patterns: "Filter Chain Pattern, Token Bucket Algorithm, Defense-in-Depth, Constant-Time Comparison"
   }
 };
 

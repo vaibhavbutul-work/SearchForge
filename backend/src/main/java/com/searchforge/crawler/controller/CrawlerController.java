@@ -28,6 +28,9 @@ public class CrawlerController {
 
     private static final Logger log = LoggerFactory.getLogger(CrawlerController.class);
 
+    public static final int MAX_SEED_URLS = 50;
+    public static final int MAX_URL_LENGTH = 2048;
+
     private final CrawlEngine crawlEngine;
     private final CrawledDocumentRepository documentRepository;
 
@@ -44,6 +47,21 @@ public class CrawlerController {
      */
     @PostMapping("/start")
     public ResponseEntity<?> startCrawl(@RequestBody(required = false) CrawlStartRequest request) {
+        if (request != null && request.seedUrls() != null) {
+            if (request.seedUrls().size() > MAX_SEED_URLS) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Maximum " + MAX_SEED_URLS + " seed URLs allowed per crawl request"
+                ));
+            }
+            for (String seedUrl : request.seedUrls()) {
+                if (seedUrl != null && seedUrl.length() > MAX_URL_LENGTH) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "error", "Seed URL exceeds maximum allowed length of " + MAX_URL_LENGTH + " characters"
+                    ));
+                }
+            }
+        }
+
         CrawlStatus currentStatus = crawlEngine.getStatus();
         if (currentStatus.isRunning() || currentStatus.state() == CrawlState.STOPPING) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -97,8 +115,33 @@ public class CrawlerController {
      * Returns a paginated list of crawled documents persisted in PostgreSQL.
      */
     @GetMapping("/documents")
-    public ResponseEntity<Page<CrawledDocumentSummaryResponse>> listDocuments(
-            @PageableDefault(size = 20, sort = "crawledAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    public ResponseEntity<?> listDocuments(
+            @PageableDefault(size = 20, sort = "crawledAt", direction = Sort.Direction.DESC) Pageable pageable,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String pageParam = request.getParameter("page");
+        if (pageParam != null) {
+            try {
+                if (Integer.parseInt(pageParam.trim()) < 0) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "error", "Page index must not be negative"
+                    ));
+                }
+            } catch (NumberFormatException ignored) {
+                // Handled by Spring or type mismatch
+            }
+        }
+
+        if (pageable.getPageSize() > 100) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Page size must not exceed 100"
+            ));
+        }
+        if (pageable.getPageNumber() < 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Page index must not be negative"
+            ));
+        }
+
         Page<CrawledDocumentSummaryResponse> page = documentRepository.findAll(pageable)
                 .map(CrawledDocumentSummaryResponse::from);
         return ResponseEntity.ok(page);

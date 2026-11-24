@@ -6,6 +6,22 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.7.0] - Phase 11: Security Engineering, API Hardening & Production Security (2026-11-24)
+
+### Added
+- **Constant-Time Administrative Authentication & RBAC:** Implemented `ApiKeyAuthenticationFilter` registered at `Ordered.HIGHEST_PRECEDENCE + 10` intercepting `/api/v1/lifecycle/**`, `/api/v1/index/**`, and `/api/v1/crawler/**` mutating endpoints. Employs `MessageDigest.isEqual` to guarantee constant-time verification against timing side-channel attacks, returning RFC 7807 `401 Unauthorized` responses.
+- **Lock-Free Monotonic Token Bucket Rate Limiting:** Built `RateLimitingFilter` at `Ordered.HIGHEST_PRECEDENCE + 5` supporting tiered token bucket quotas: `SEARCH` tier (60 req/min continuous, burst capacity 60) and `ADMIN` tier (10 req/min continuous, burst capacity 10) using `System.nanoTime()` for monotonic clock stability. Emits RFC 6585 `429 Too Many Requests` with `Retry-After: <sec>` and `X-RateLimit-*` headers.
+- **Web Crawler SSRF Sandbox & Private IP Defense:** Engineered `IpRangeValidator` and `SafeDnsResolver` performing pre-flight DNS inspections across all resolved IPs, blocking IPv4 loopback (`127.0.0.0/8`), RFC 1918 private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local / cloud metadata (`169.254.169.254`), multicast, and IPv6 unique local. Enforced web schemes (`http`, `https`) and standard ports (80, 443, 8080, 8443).
+- **Controlled Redirect Loop & Cycle Trap Defense:** Refactored `DocumentFetcher` with `.followRedirects(false)` and a manual redirect loop capped at 3 hops, re-evaluating `SafeDnsResolver` on every hop and tracking visited URLs in a `Set<String>` to neutralize cyclic redirect tarpits.
+- **Strict Input Length Validation & Algorithmic DoS Prevention:** Defensively bounded all public and admin controller parameters ($q \le 500$ chars, autocomplete prefix $\le 100$, spelling suggest $\le 200$, seed URLs $\le 50$, URLs $\le 2048$, page size $\le 100$, page $\ge 0$), completely neutralizing algorithmic DoS on Damerau-Levenshtein spelling correction and ONNX tensor allocation churn.
+- **RFC 7807 Error Response Sanitization:** Implemented `GlobalExceptionHandler` and `ApiErrorResponse` converting unexpected runtime exceptions and database constraint violations into sanitized problem details payloads (HTTP 409 Conflict / HTTP 500 Internal Error) without exposing database schema internals or stack traces.
+- **Secrets Management, Pre-Flight Startup Validation & Actuator Masking:** Created `SecurityStartupValidator` to prevent production startup with default credentials, implemented secret redacting in `SecurityProperties.toString()` (`sf****od`), and sanitized Spring Boot Actuator endpoints (`env.show-values: never`, `configprops.show-values: never`).
+- **Automated Security Regression Suite:** Implemented `SecurityRegressionSuiteTest` with 6 automated end-to-end regression gates validating authorization, constant-time comparison, SSRF sandbox, input length bounds, rate limiting, and SQL exception masking.
+- **Automated Testing Suite Milestone:** Added 105 new automated security tests across 8 test suites, bringing the total hermetic test count to **657 tests (644 backend + 13 frontend)** with a 100% pass rate.
+- **Production Hardening & Audit Documentation:** Authored comprehensive post-implementation STRIDE audit matrix in `docs/security/PHASE_11_SECURITY_AUDIT_REPORT.md` and operator runbook in `docs/security/PRODUCTION_HARDENING_GUIDE.md`.
+
+---
+
 ## [1.6.0] - Phase 10: Performance & Scalability Engineering (2026-11-23)
 
 ### Added

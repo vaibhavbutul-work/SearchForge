@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/searchforge-hero-banner.svg?v=552" alt="SearchForge Hero Banner" width="100%">
+  <img src="docs/assets/searchforge-hero-banner.svg?v=657" alt="SearchForge Hero Banner" width="100%">
 </p>
 
 <p align="center">
@@ -7,13 +7,14 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16_Alpine-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://openjdk.org/projects/loom/"><img src="https://img.shields.io/badge/Concurrency-Project_Loom_Virtual_Threads-4B0082?style=for-the-badge" alt="Project Loom"></a>
-  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-552%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="552 Tests Passing"></a>
+  <a href="https://github.com/vaibhavbutul-work/SearchForge/actions"><img src="https://img.shields.io/badge/Tests-657%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="657 Tests Passing"></a>
   <a href="#-information-retrieval-evaluation-suite"><img src="https://img.shields.io/badge/Evaluation-MRR%200.908%20%7C%20NDCG@3%200.865-00E5FF?style=for-the-badge" alt="Evaluation Metrics"></a>
 </p>
 
 <p align="center">
   <a href="https://vaibhavbutul-work.github.io/SearchForge/"><strong>🌐 Launch Live Interactive Documentation Website</strong></a> •
   <a href="#-end-to-end-search-pipeline"><strong>Search Pipeline</strong></a> •
+  <a href="#-security-engineering-api-hardening--production-security-phase-11"><strong>Security & Hardening</strong></a> •
   <a href="#-performance--scalability-engineering-phase-10"><strong>Performance Engineering</strong></a> •
   <a href="#-subsystem-architecture"><strong>System Architecture</strong></a> •
   <a href="#-index-lifecycle-data-consistency--recovery-phase-8"><strong>Index Lifecycle & Recovery</strong></a> •
@@ -35,7 +36,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/metrics-badge-summary.svg?v=552" alt="SearchForge Production Metrics Dashboard" width="100%">
+  <img src="docs/assets/metrics-badge-summary.svg?v=657" alt="SearchForge Production Metrics Dashboard" width="100%">
 </p>
 
 ---
@@ -503,6 +504,36 @@ Phase 10 establishes empirical, first-principles algorithmic optimizations acros
 
 ---
 
+## 🛡️ Security Engineering, API Hardening & Production Security (Phase 11)
+
+Phase 11 establishes a comprehensive, 7-layer Defense-in-Depth security architecture that mitigates 100% of baseline vulnerabilities across all STRIDE threat categories, backed by 105 automated security tests:
+
+### 1. Constant-Time Administrative Authentication & RBAC
+* **`ApiKeyAuthenticationFilter`:** Intercepts `/api/v1/lifecycle/**`, `/api/v1/index/**`, and `/api/v1/crawler/**` mutating routes at `HIGHEST_PRECEDENCE + 10`.
+* **Timing-Attack Immunity:** Uses `MessageDigest.isEqual` to compare provided `X-API-KEY` bytes in strict $O(N)$ constant time, neutralizing nanosecond timing side-channel attacks.
+* **Public Search Route Isolation:** Public search endpoints (`/api/v1/search/**`, `/autocomplete/**`, `/suggest/**`, `/crawler/status`) remain unauthenticated and latency-optimized.
+
+### 2. Lock-Free Monotonic Token Bucket Rate Limiting
+* **`RateLimitingFilter`:** Drops abusive request floods at `HIGHEST_PRECEDENCE + 5` before authentication or CPU-intensive query parsing occurs.
+* **Monotonic Clock Stability:** Uses `System.nanoTime()` for token refill calculations, preventing negative skips or sudden refills caused by NTP synchronization or system clock adjustments.
+* **Tiered Enforcement:** Partitioned into `SEARCH` tier (60 req/min continuous, burst 60) and `ADMIN` tier (10 req/min continuous, burst 10), returning RFC 6585 HTTP 429 Too Many Requests with standard `Retry-After` and `X-RateLimit-*` headers.
+
+### 3. Web Crawler SSRF Sandbox & Private Subnet Protection
+* **`SafeDnsResolver` & `IpRangeValidator`:** Evaluates all resolved IP addresses for a host during pre-flight DNS lookup. Blocks IPv4 loopback (`127.0.0.0/8`), RFC 1918 private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local / cloud metadata (`169.254.169.254`), multicast, AnyLocal (`0.0.0.0`), and IPv6 unique local (`fc00::/7`).
+* **Controlled Redirect Loop:** Disables automatic redirect following (`followRedirects(false)`) and enforces a manual 3-hop redirect ceiling with cycle detection, re-evaluating DNS and IP filters on every hop.
+
+### 4. Input Bounds Validation & Algorithmic DoS Neutralization
+* **Strict Parameter Bounds:** Binds search query length ($q \le 500$), autocomplete prefix ($\le 100$), spelling suggest ($\le 200$), seed URLs ($\le 50$), URLs ($\le 2048$), and pagination ($page \ge 0$, $limit \le 100$), eliminating quadratic Damerau-Levenshtein matrix churn and BERT WordPiece tokenization flooding.
+
+### 5. RFC 7807 Error Response Sanitization
+* **`GlobalExceptionHandler`:** Centralizes exception handling, converting uncaught runtime exceptions and database integrity constraint violations into opaque RFC 7807 `ApiErrorResponse` payloads (HTTP 409 Conflict / HTTP 500 Internal Error) without exposing PostgreSQL table names, constraints, or JVM stack traces.
+
+### 6. Secrets Management, Pre-Flight Validation & Actuator Masking
+* **`SecurityStartupValidator`:** Validates API key strength on application boot. Halts startup with an explicit error in `prod` profile or strict mode if default/sample keys are detected.
+* **Log Redaction & Actuator Protection:** Redacts keys in logs (`sf****od`), and configures Spring Boot Actuator with `env.show-values: never` and `configprops.show-values: never`.
+
+---
+
 ## 🎨 Complete Frontend Web Application (Phase 6)
 
 SearchForge includes a decoupled, modern search interface built in React 18 and Vite 6 (`frontend/`):
@@ -580,17 +611,26 @@ SearchForge includes a decoupled, modern search interface built in React 18 and 
 
 ---
 
-## 🧪 Automated Testing Audit (552 Tests: 539 Backend + 13 Frontend)
+## 🧪 Automated Testing Audit (657 Tests: 644 Backend + 13 Frontend)
 
 ```
 [INFO] Results:
-[INFO] Tests run: 539, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: ~38.7s)
+[INFO] Tests run: 644, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS (Total time: ~37.0s)
 
 ℹ tests 13, pass 13, fail 0 (Total time: ~79ms)
 ```
 
-SearchForge includes **552 hermetic automated tests (539 Backend + 13 Frontend)** across all subsystems:
+SearchForge includes **657 hermetic automated tests (644 Backend + 13 Frontend)** across all subsystems:
+- **Phase 11 Security Engineering, API Hardening & Production Security (105 tests):**
+  - `ApiKeyAuthenticationFilterTest`: 31 tests verifying API key parsing, path matching, constant-time byte comparisons (`MessageDigest.isEqual`), and timing safety.
+  - `AdminSecurityIntegrationTest`: 7 tests verifying MockMvc authorization barriers across all protected administrative endpoints (`/index/**`, `/lifecycle/**`, `/crawler/**`).
+  - `InputValidationAndHardeningTest`: 13 tests enforcing strict parameter bounds ($q \le 500$, $seeds \le 50$, $url \le 2048$, $page \ge 0$) and input sanitization.
+  - `SsrfProtectionTest`: 18 tests for IP range validation (blocking loopback, RFC 1918 private subnets, cloud metadata `169.254.169.254`), safe DNS resolution, and 3-hop redirect ceilings.
+  - `RateLimitingTest`: 14 tests for lock-free monotonic token buckets, tier isolation (`SEARCH` vs `ADMIN`), client IP extraction, and HTTP 429 response headers.
+  - `DatabaseSecurityTest`: 6 tests for parameterized Spring Data queries, SQL exception masking into HTTP 409, and HikariCP leak detection thresholds.
+  - `SecretsAndConfigurationSecurityTest`: 10 tests for `SecurityStartupValidator` pre-flight enforcement, API key masking (`sf****od`), Actuator masking, and gitignore audits.
+  - `SecurityRegressionSuiteTest`: 6 tests enforcing 6 end-to-end security regression gates.
 - **Phase 10 Performance & Scalability Engineering (31 tests):**
   - `PerformanceRegressionTest`: 5 tests enforcing 5 deterministic regression gates (Lexical latency $< 2.0\text{ ms}$, Positional memory $\le 80\text{ B}$, Codec throughput $\ge 30\text{M}$ ints/s, Vector scalability $P_{95} < 10.0\text{ ms}$, and Hybrid degradation resiliency).
   - `VectorScalabilityBenchmarkTest`: 3 tests evaluating exact vector search scaling across $N \in \{100, 500, 1000, 5000, 10000\}$ 384-D vectors, zero-allocation iteration fidelity, and ANN trade-off boundary modeling ($P_{95} = 8.54\text{ ms}$ at 10k vectors, 100% recall).
@@ -695,7 +735,7 @@ SearchForge includes an in-memory H2 development profile with 24 multi-domain en
 ```bash
 cd backend
 
-# Run all 539 backend tests in-memory
+# Run all 644 backend tests in-memory
 ./mvnw test
 
 # Launch the server with the dev profile (H2 in-memory DB)
@@ -755,7 +795,12 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 | **[`docs/api/INDEXER_API.md`](docs/api/INDEXER_API.md)** | Index management, synchronization, warmup, and corpus statistics endpoints |
 | **[`docs/api/CRAWLER_API.md`](docs/api/CRAWLER_API.md)** | Crawler control, status telemetry, and frontier reset endpoints |
 | **[`docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md`](docs/experiments/REAL_WORLD_CRAWL_EXPERIMENT.md)** | Audit report of the 16-page live crawl across PostgreSQL, Oracle, and Spring docs |
-| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 10 |
+| **[`docs/phases/`](docs/phases/)** | Detailed milestone guides for Phase 1 through Phase 11 |
+| **[`docs/security/PHASE_11_SECURITY_AUDIT_REPORT.md`](docs/security/PHASE_11_SECURITY_AUDIT_REPORT.md)** | **Phase 11 Master Capstone Security Audit Report & STRIDE Mitigation Matrix** |
+| **[`docs/security/PRODUCTION_HARDENING_GUIDE.md`](docs/security/PRODUCTION_HARDENING_GUIDE.md)** | Production Hardening, Nginx TLS 1.3 Reverse Proxy, Zero-Downtime Key Rotation & Playbooks |
+| **[`docs/security/THREAT_MODEL_AUDIT.md`](docs/security/THREAT_MODEL_AUDIT.md)** | Initial Phase 11 STRIDE Threat Catalog and Baseline Vulnerability Audit |
+| **[`docs/phases/PHASE_11_SECURITY_HARDENING.md`](docs/phases/PHASE_11_SECURITY_HARDENING.md)** | Complete milestone specification and roadmap for Phase 11 Security & Hardening |
+| **[`docs/PHASE_11_COMPLETE_GUIDE.md`](docs/PHASE_11_COMPLETE_GUIDE.md)** | Masterclass technical guide, constant-time auth, SSRF sandbox, token buckets, and regression gates for Phase 11 |
 | **[`docs/phases/PHASE_10_PERFORMANCE_SCALABILITY.md`](docs/phases/PHASE_10_PERFORMANCE_SCALABILITY.md)** | Complete milestone specification and execution roadmap for Phase 10 Performance & Scalability |
 | **[`docs/PHASE_10_COMPLETE_GUIDE.md`](docs/PHASE_10_COMPLETE_GUIDE.md)** | Masterclass technical guide, packed primitives, VByte codecs, vector math proofs, and regression gates for Phase 10 |
 | **[`docs/phases/PHASE_9_CONCURRENCY_RELIABILITY.md`](docs/phases/PHASE_9_CONCURRENCY_RELIABILITY.md)** | Complete milestone specification for Phase 9 Concurrency & Reliability |
@@ -780,7 +825,7 @@ The complete engineering documentation is organized under [`docs/`](docs/):
 - **[CONTRIBUTING.md](CONTRIBUTING.md):** Guidelines for code style, branching, pull requests, and test expectations.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Contributor standards and inclusive community pledges.
 - **[SECURITY.md](SECURITY.md):** Vulnerability reporting and disclosure protocols.
-- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 10.
+- **[CHANGELOG.md](CHANGELOG.md):** Semantic version history across Phase 1 through Phase 11.
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml):** Automated GitHub Actions CI workflow running Java 21 test suites on every pull request.
 - **[.github/workflows/pages.yml](.github/workflows/pages.yml):** Automated GitHub Pages deployment workflow for the interactive `docs-site/`.
 

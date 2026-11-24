@@ -34,9 +34,16 @@ out/
 Thumbs.db
 desktop.ini
 
-# Environment and sensitive files
+# Environment, keys, and credentials
 .env
-.env.local
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.keystore
+*.jks
 *.log
 
 # Frontend dependencies and builds

@@ -16,6 +16,8 @@ spring:
       minimum-idle: 2
       initialization-fail-timeout: 0
       connection-timeout: 3000
+      validation-timeout: 2000
+      leak-detection-threshold: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
 
@@ -33,9 +35,13 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
       probes:
         enabled: true
+    env:
+      show-values: never
+    configprops:
+      show-values: never
 
 app:
   name: SearchForge
@@ -59,4 +65,20 @@ ranking:
   bm25:
     k1: 1.2
     b: 0.75
+
+searchforge:
+  security:
+    enabled: true
+    admin-api-key: ${SEARCHFORGE_ADMIN_API_KEY:sf-admin-secret-key-prod}
+    header-name: "X-API-KEY"
+    crawler:
+      ssrf-protection-enabled: true
+      block-private-ips: true
+      max-redirects: 3
+    rate-limit:
+      enabled: true
+      search-requests-per-minute: 60
+      search-burst-capacity: 20
+      admin-requests-per-minute: 20
+      admin-burst-capacity: 5
 

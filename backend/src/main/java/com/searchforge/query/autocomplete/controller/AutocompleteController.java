@@ -20,6 +20,8 @@ import java.util.Objects;
 @RequestMapping("/api/v1/search/autocomplete")
 public class AutocompleteController {
 
+    public static final int MAX_PREFIX_LENGTH = 100;
+
     private final AutocompleteService autocompleteService;
 
     public AutocompleteController(AutocompleteService autocompleteService) {
@@ -43,6 +45,12 @@ public class AutocompleteController {
         if (prefix == null || prefix.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Prefix parameter 'prefix' must not be blank"
+            ));
+        }
+
+        if (prefix.length() > MAX_PREFIX_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Prefix parameter 'prefix' must not exceed " + MAX_PREFIX_LENGTH + " characters"
             ));
         }
 
