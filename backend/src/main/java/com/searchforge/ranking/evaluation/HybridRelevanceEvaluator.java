@@ -175,6 +175,10 @@ public class HybridRelevanceEvaluator {
         return rankFusionEngine.getK();
     }
 
+    public EmbeddingModel getEmbeddingModel() {
+        return embeddingModel;
+    }
+
     /**
      * Complete evaluation result bundle across all three search modes.
      */

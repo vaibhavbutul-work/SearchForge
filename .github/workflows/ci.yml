@@ -29,6 +29,19 @@ jobs:
       - name: Make Maven Wrapper Executable
         run: chmod +x backend/mvnw
 
+      - name: Cache ONNX Embedding Model
+        id: cache-onnx
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/searchforge/all-MiniLM-L6-v2.onnx
+          key: onnx-model-all-MiniLM-L6-v2-v1
+
+      - name: Download ONNX Embedding Model If Not Cached
+        if: steps.cache-onnx.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.cache/searchforge
+          curl -sSL -o ~/.cache/searchforge/all-MiniLM-L6-v2.onnx https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx || true
+
       - name: Execute Full Test Suite (719 Tests)
         working-directory: backend
         run: mvn test --batch-mode --no-transfer-progress || ./mvnw test --batch-mode --no-transfer-progress

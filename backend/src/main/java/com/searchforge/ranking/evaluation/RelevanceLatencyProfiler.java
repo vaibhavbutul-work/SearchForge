@@ -230,6 +230,10 @@ public class RelevanceLatencyProfiler {
     /**
      * Latency statistical percentiles record.
      */
+    public EmbeddingModel getEmbeddingModel() {
+        return embeddingModel;
+    }
+
     public record LatencyProfile(
             double meanMs,
             double p50Ms,

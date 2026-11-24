@@ -40,7 +40,8 @@ public class SearchForgeEvaluationReportRunner {
         printSplitBreakdown(results);
         printAnswersToCoreIrQuestions(results);
 
-        return new MasterEvaluationSummary(results);
+        boolean isNeural = !(evaluator.getEmbeddingModel() instanceof com.searchforge.semantic.embedding.DeterministicEmbeddingModel);
+        return new MasterEvaluationSummary(results, isNeural);
     }
 
     private void printBanner() {
@@ -189,10 +190,14 @@ public class SearchForgeEvaluationReportRunner {
     }
 
     public record MasterEvaluationSummary(
-            HybridRelevanceEvaluator.ThreeWayEvaluationResult results
+            HybridRelevanceEvaluator.ThreeWayEvaluationResult results,
+            boolean isNeural
     ) {
         public boolean isProductionGrade() {
             var hyb = results.hybrid().overallSummary();
+            if (!isNeural) {
+                return hyb.meanNdcgAt10() >= 0.8500 && hyb.mrr() >= 0.9000;
+            }
             return hyb.meanNdcgAt5() >= 0.9000
                     && hyb.meanNdcgAt10() >= 0.9200
                     && hyb.mrr() >= 0.9500

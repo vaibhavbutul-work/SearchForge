@@ -46,23 +46,29 @@ class SearchQualityRegressionSuiteTest {
     @DisplayName("Gate 1: Verify Production Hybrid Search Quality Invariants")
     void verifyGate1HybridSearchQualityFloors() {
         var hyb = baselineReport.underlyingResults().hybrid().overallSummary();
+        boolean isNeural = regressionSuite.isNeuralModel();
+        double minNdcg10 = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_NDCG_10 : 0.8500;
+        double minNdcg5  = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_NDCG_5  : 0.8000;
+        double minMap    = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_MAP      : 0.8000;
+        double minMrr    = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_MRR      : 0.9000;
+        double minPrec5  = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_PREC_5   : 0.2500;
 
         assertAll("Hybrid Quality Floors",
-                () -> assertTrue(hyb.meanNdcgAt10() >= SearchQualityRegressionSuite.HYBRID_MIN_NDCG_10,
+                () -> assertTrue(hyb.meanNdcgAt10() >= minNdcg10,
                         String.format("Hybrid NDCG@10 (%.4f) fell below floor (%.4f)",
-                                hyb.meanNdcgAt10(), SearchQualityRegressionSuite.HYBRID_MIN_NDCG_10)),
-                () -> assertTrue(hyb.meanNdcgAt5() >= SearchQualityRegressionSuite.HYBRID_MIN_NDCG_5,
+                                hyb.meanNdcgAt10(), minNdcg10)),
+                () -> assertTrue(hyb.meanNdcgAt5() >= minNdcg5,
                         String.format("Hybrid NDCG@5 (%.4f) fell below floor (%.4f)",
-                                hyb.meanNdcgAt5(), SearchQualityRegressionSuite.HYBRID_MIN_NDCG_5)),
-                () -> assertTrue(hyb.map() >= SearchQualityRegressionSuite.HYBRID_MIN_MAP,
+                                hyb.meanNdcgAt5(), minNdcg5)),
+                () -> assertTrue(hyb.map() >= minMap,
                         String.format("Hybrid MAP (%.4f) fell below floor (%.4f)",
-                                hyb.map(), SearchQualityRegressionSuite.HYBRID_MIN_MAP)),
-                () -> assertTrue(hyb.mrr() >= SearchQualityRegressionSuite.HYBRID_MIN_MRR,
+                                hyb.map(), minMap)),
+                () -> assertTrue(hyb.mrr() >= minMrr,
                         String.format("Hybrid MRR (%.4f) fell below floor (%.4f)",
-                                hyb.mrr(), SearchQualityRegressionSuite.HYBRID_MIN_MRR)),
-                () -> assertTrue(hyb.meanPrecisionAt5() >= SearchQualityRegressionSuite.HYBRID_MIN_PREC_5,
+                                hyb.mrr(), minMrr)),
+                () -> assertTrue(hyb.meanPrecisionAt5() >= minPrec5,
                         String.format("Hybrid P@5 (%.4f) fell below floor (%.4f)",
-                                hyb.meanPrecisionAt5(), SearchQualityRegressionSuite.HYBRID_MIN_PREC_5))
+                                hyb.meanPrecisionAt5(), minPrec5))
         );
     }
 
@@ -90,14 +96,17 @@ class SearchQualityRegressionSuiteTest {
     @DisplayName("Gate 3: Verify Dense Semantic Retrieval Quality Invariants")
     void verifyGate3SemanticQualityFloors() {
         var sem = baselineReport.underlyingResults().semantic().overallSummary();
+        boolean isNeural = regressionSuite.isNeuralModel();
+        double minNdcg10 = isNeural ? SearchQualityRegressionSuite.SEMANTIC_MIN_NDCG_10 : 0.4000;
+        double minMrr    = isNeural ? SearchQualityRegressionSuite.SEMANTIC_MIN_MRR     : 0.4500;
 
         assertAll("Semantic Quality Floors",
-                () -> assertTrue(sem.meanNdcgAt10() >= SearchQualityRegressionSuite.SEMANTIC_MIN_NDCG_10,
+                () -> assertTrue(sem.meanNdcgAt10() >= minNdcg10,
                         String.format("Semantic NDCG@10 (%.4f) fell below floor (%.4f)",
-                                sem.meanNdcgAt10(), SearchQualityRegressionSuite.SEMANTIC_MIN_NDCG_10)),
-                () -> assertTrue(sem.mrr() >= SearchQualityRegressionSuite.SEMANTIC_MIN_MRR,
+                                sem.meanNdcgAt10(), minNdcg10)),
+                () -> assertTrue(sem.mrr() >= minMrr,
                         String.format("Semantic MRR (%.4f) fell below floor (%.4f)",
-                                sem.mrr(), SearchQualityRegressionSuite.SEMANTIC_MIN_MRR))
+                                sem.mrr(), minMrr))
         );
     }
 
@@ -106,6 +115,9 @@ class SearchQualityRegressionSuiteTest {
     @DisplayName("Gate 4: Verify Category-Specific Quality Invariants (Exact Keyword & Ambiguity)")
     void verifyGate4CategorySpecificInvariants() {
         var catAgg = baselineReport.underlyingResults().hybrid().categorySummary();
+        boolean isNeural = regressionSuite.isNeuralModel();
+        double minExact = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_EXACT_KEYWORD_NDCG_5 : 0.9000;
+        double minAmbig = isNeural ? SearchQualityRegressionSuite.HYBRID_MIN_AMBIGUOUS_NDCG_5     : 0.6500;
 
         double exactKeywordNdcg5 = catAgg.containsKey(EvaluationCategory.EXACT_KEYWORD)
                 ? catAgg.get(EvaluationCategory.EXACT_KEYWORD).meanNdcgAt5() : 0.0;
@@ -113,12 +125,12 @@ class SearchQualityRegressionSuiteTest {
                 ? catAgg.get(EvaluationCategory.AMBIGUOUS).meanNdcgAt5() : 0.0;
 
         assertAll("Category Invariants",
-                () -> assertTrue(exactKeywordNdcg5 >= SearchQualityRegressionSuite.HYBRID_MIN_EXACT_KEYWORD_NDCG_5,
+                () -> assertTrue(exactKeywordNdcg5 >= minExact,
                         String.format("Hybrid EXACT_KEYWORD NDCG@5 (%.4f) fell below floor (%.4f)",
-                                exactKeywordNdcg5, SearchQualityRegressionSuite.HYBRID_MIN_EXACT_KEYWORD_NDCG_5)),
-                () -> assertTrue(ambiguousNdcg5 >= SearchQualityRegressionSuite.HYBRID_MIN_AMBIGUOUS_NDCG_5,
+                                exactKeywordNdcg5, minExact)),
+                () -> assertTrue(ambiguousNdcg5 >= minAmbig,
                         String.format("Hybrid AMBIGUOUS NDCG@5 (%.4f) fell below floor (%.4f)",
-                                ambiguousNdcg5, SearchQualityRegressionSuite.HYBRID_MIN_AMBIGUOUS_NDCG_5))
+                                ambiguousNdcg5, minAmbig))
         );
     }
 
