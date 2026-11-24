@@ -41,6 +41,11 @@ public class ReciprocalRankFusionEngine implements RankFusionEngine {
 
     @Override
     public List<FusedDocumentResult> fuse(Map<String, List<RankedItem>> rankedLists, int topK) {
+        return fuse(rankedLists, Map.of(), topK);
+    }
+
+    @Override
+    public List<FusedDocumentResult> fuse(Map<String, List<RankedItem>> rankedLists, Map<String, Double> sourceWeights, int topK) {
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be positive, got: " + topK);
         }
@@ -57,6 +62,9 @@ public class ReciprocalRankFusionEngine implements RankFusionEngine {
                 continue;
             }
 
+            double sourceMultiplier = (sourceWeights != null && sourceWeights.containsKey(source))
+                    ? sourceWeights.get(source) : 1.0;
+
             Set<Long> seenInThisList = new HashSet<>();
 
             for (RankedItem item : items) {
@@ -71,7 +79,7 @@ public class ReciprocalRankFusionEngine implements RankFusionEngine {
                 seenInThisList.add(docId);
 
                 int rank = item.rank();
-                double contribution = 1.0 / (k + rank);
+                double contribution = sourceMultiplier * (1.0 / (k + rank));
 
                 Accumulator acc = accumulators.computeIfAbsent(docId, id -> new Accumulator(id));
                 acc.totalRrf += contribution;

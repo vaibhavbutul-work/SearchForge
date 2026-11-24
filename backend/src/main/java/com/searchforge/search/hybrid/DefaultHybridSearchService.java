@@ -40,6 +40,7 @@ public class DefaultHybridSearchService implements HybridSearchService {
     private final com.searchforge.semantic.embedding.QueryEmbeddingCache queryEmbeddingCache;
     private final int poolMultiplier;
     private final int minPoolSize;
+    private final Map<String, Double> sourceWeights;
     private final ExecutorService searchExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public DefaultHybridSearchService(
@@ -47,7 +48,7 @@ public class DefaultHybridSearchService implements HybridSearchService {
             EmbeddingModel embeddingModel,
             VectorSimilarityEngine vectorSimilarityEngine,
             RankFusionEngine rankFusionEngine) {
-        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, null, 2, 50);
+        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, null, Map.of(), 2, 50);
     }
 
     public DefaultHybridSearchService(
@@ -57,7 +58,18 @@ public class DefaultHybridSearchService implements HybridSearchService {
             RankFusionEngine rankFusionEngine,
             int poolMultiplier,
             int minPoolSize) {
-        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, null, poolMultiplier, minPoolSize);
+        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, null, Map.of(), poolMultiplier, minPoolSize);
+    }
+
+    public DefaultHybridSearchService(
+            RankedRetrievalEngine rankedRetrievalEngine,
+            EmbeddingModel embeddingModel,
+            VectorSimilarityEngine vectorSimilarityEngine,
+            RankFusionEngine rankFusionEngine,
+            Map<String, Double> sourceWeights,
+            int poolMultiplier,
+            int minPoolSize) {
+        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, null, sourceWeights, poolMultiplier, minPoolSize);
     }
 
     public DefaultHybridSearchService(
@@ -66,7 +78,7 @@ public class DefaultHybridSearchService implements HybridSearchService {
             VectorSimilarityEngine vectorSimilarityEngine,
             RankFusionEngine rankFusionEngine,
             com.searchforge.semantic.embedding.QueryEmbeddingCache queryEmbeddingCache) {
-        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, queryEmbeddingCache, 2, 50);
+        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, queryEmbeddingCache, Map.of(), 2, 50);
     }
 
     @Autowired
@@ -78,11 +90,24 @@ public class DefaultHybridSearchService implements HybridSearchService {
             @Autowired(required = false) com.searchforge.semantic.embedding.QueryEmbeddingCache queryEmbeddingCache,
             @Value("${search.hybrid.candidate-pool-multiplier:2}") int poolMultiplier,
             @Value("${search.hybrid.min-candidate-pool-size:50}") int minPoolSize) {
+        this(rankedRetrievalEngine, embeddingModel, vectorSimilarityEngine, rankFusionEngine, queryEmbeddingCache, Map.of(), poolMultiplier, minPoolSize);
+    }
+
+    public DefaultHybridSearchService(
+            RankedRetrievalEngine rankedRetrievalEngine,
+            EmbeddingModel embeddingModel,
+            VectorSimilarityEngine vectorSimilarityEngine,
+            RankFusionEngine rankFusionEngine,
+            com.searchforge.semantic.embedding.QueryEmbeddingCache queryEmbeddingCache,
+            Map<String, Double> sourceWeights,
+            int poolMultiplier,
+            int minPoolSize) {
         this.rankedRetrievalEngine = Objects.requireNonNull(rankedRetrievalEngine, "RankedRetrievalEngine cannot be null");
         this.rankFusionEngine = Objects.requireNonNull(rankFusionEngine, "RankFusionEngine cannot be null");
         this.embeddingModel = embeddingModel;
         this.vectorSimilarityEngine = vectorSimilarityEngine;
         this.queryEmbeddingCache = queryEmbeddingCache;
+        this.sourceWeights = sourceWeights != null ? Map.copyOf(sourceWeights) : Map.of();
         this.poolMultiplier = poolMultiplier > 0 ? poolMultiplier : 2;
         this.minPoolSize = minPoolSize > 0 ? minPoolSize : 50;
     }
@@ -230,7 +255,7 @@ public class DefaultHybridSearchService implements HybridSearchService {
         inputs.put("semantic", semanticItems);
 
         // 4. Execute Reciprocal Rank Fusion
-        List<FusedDocumentResult> fusedResults = rankFusionEngine.fuse(inputs, limit);
+        List<FusedDocumentResult> fusedResults = rankFusionEngine.fuse(inputs, sourceWeights, limit);
 
         // 5. Enrich fused candidates with individual score provenance
         List<HybridCandidate> candidates = new ArrayList<>(fusedResults.size());
