@@ -79,6 +79,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         Security &amp; Hardening (Phase 11)
       </a>
+      <a href="#evaluation" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Relevance &amp; IR Quality (Phase 12)
+      </a>
 
       <div class="nav-group-title">Engineering Specs</div>
       <a href="#api" class="nav-link">
@@ -103,7 +107,7 @@
     <header class="top-bar">
       <div class="search-status-pill">
         <span class="pulse-dot"></span>
-        <span>657 Tests Passing (644 Backend + 13 Frontend) • 100% Hermetic</span>
+        <span>719 Tests Passing (706 Backend + 13 Frontend) • 100% Hermetic</span>
       </div>
       <div class="quick-links">
         <a href="https://github.com/vaibhavbutul-work/SearchForge" target="_blank" class="btn btn-secondary">
@@ -123,15 +127,15 @@
           Engineering an Industrial <span class="gradient-text">Search Engine</span> in Java 21
         </h1>
         <p class="hero-description">
-          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), <strong>Phase 7 Hybrid Search &amp; Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]), <strong>Phase 8 Index Lifecycle &amp; Recovery</strong> (10-state lifecycle state machine, staged two-phase transactional coordinator, cross-layer reconciliation auditor, self-healing repair, and exponential backoff recovery), <strong>Phase 9 Concurrency &amp; Reliability</strong> (optimistic <code>@Version</code> locking, striped document mutex fencing, atomic read-isolated <code>IndexQuerySnapshot</code>, sub-10ns <code>ActiveDocumentFilter</code>, and chaos failure testing), <strong>Phase 10 Performance, Scalability &amp; Memory Optimization</strong> (7.78× lexical speedup to 0.036ms, 6.61× indexing throughput to 185 docs/s, 79.1% posting memory reduction via packed primitive <code>int[]</code> arrays, 87.5% VByte/Delta compression, L2 normalized zero-sqrt dot product vector search, concurrent virtual-thread hybrid retrieval, and automated 5-gate regression testing), and <strong>Phase 11 Security Engineering &amp; API Hardening</strong> (constant-time API key auth, lock-free monotonic TokenBucket rate limiting, crawler SSRF sandbox, defensive input bounds, RFC 7807 problem details, and 105 automated security tests).
+          SearchForge is a custom search engine implementing every core algorithm from scratch: multi-worker polite web crawling, Unicode linguistic normalization, Porter morphological stemming, dual-tier positional inverted indexing, recursive-descent Boolean query AST evaluation, <strong>Okapi BM25 probabilistic relevance ranking</strong>, <strong>Phase 5 Query Intelligence</strong> (Trie autocomplete, Damerau-Levenshtein spelling correction, dynamic highlighted snippets, and synonym expansion), <strong>Phase 6 Frontend Web Application</strong> (React 18, Vite 6, live BM25 score transparency, multi-mode retrieval), <strong>Phase 7 Hybrid Search &amp; Dense Semantic Retrieval</strong> (Local ONNX Runtime inference with <code>all-MiniLM-L6-v2</code>, authentic 30,522-token WordPiece tokenizer, dynamic sequence length tensors, and Reciprocal Rank Fusion [RRF]), <strong>Phase 8 Index Lifecycle &amp; Recovery</strong> (10-state lifecycle state machine, staged two-phase transactional coordinator, cross-layer reconciliation auditor, self-healing repair, and exponential backoff recovery), <strong>Phase 9 Concurrency &amp; Reliability</strong> (optimistic <code>@Version</code> locking, striped document mutex fencing, atomic read-isolated <code>IndexQuerySnapshot</code>, sub-10ns <code>ActiveDocumentFilter</code>, and chaos failure testing), <strong>Phase 10 Performance, Scalability &amp; Memory Optimization</strong> (7.78× lexical speedup to 0.036ms, 6.61× indexing throughput to 185 docs/s, 79.1% posting memory reduction via packed primitive <code>int[]</code> arrays, 87.5% VByte/Delta compression, L2 normalized zero-sqrt dot product vector search, concurrent virtual-thread hybrid retrieval, and automated 5-gate regression testing), <strong>Phase 11 Security Engineering &amp; API Hardening</strong> (constant-time API key auth, lock-free monotonic TokenBucket rate limiting, crawler SSRF sandbox, defensive input bounds, RFC 7807 problem details, and 105 automated security tests), and <strong>Phase 12 Search Quality Evaluation &amp; Relevance Engineering</strong> (standardized 120-document corpus, 48 benchmark queries across 8 archetypes, graded relevance judgments [0, 3], formal IR metrics [NDCG@10 = 0.9448, MRR = 0.9792], blind holdout validation, Pareto trade-off analysis, and automated 5-gate search quality regression testing).
         </p>
 
         <!-- Metrics Cards -->
         <div id="metrics" class="metrics-grid">
           <div class="metric-card">
             <div class="metric-label">Automated Tests</div>
-            <div class="metric-value" style="color: var(--accent-emerald);">657 Passing</div>
-            <div class="metric-sub">644 Backend + 13 Frontend (100%)</div>
+            <div class="metric-value" style="color: var(--accent-emerald);">719 Passing</div>
+            <div class="metric-sub">706 Backend + 13 Frontend (100%)</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">Lexical Latency</div>
@@ -462,6 +466,12 @@
             <div class="arch-icon">🔒</div>
             <h3>Security &amp; Hardening</h3>
             <p>Constant-time API key auth, TokenBucket rate limiter, SSRF sandbox, RFC 7807, 105 security tests.</p>
+          </div>
+
+          <div class="arch-card" data-subsystem="evaluation">
+            <div class="arch-icon">📊</div>
+            <h3>Relevance &amp; IR Quality</h3>
+            <p>120-doc corpus, 48 queries across 8 archetypes, formal IR metrics (NDCG=0.9448), blind holdout validation, 5-gate regression.</p>
           </div>
         </div>
 
@@ -897,6 +907,88 @@
         </div>
       </section>
 
+      <!-- SEARCH QUALITY EVALUATION (PHASE 12) -->
+      <section id="evaluation" class="section-block">
+        <div class="section-header">
+          <span class="section-subtitle">Information Retrieval (IR) Rigor &amp; Relevance Engineering</span>
+          <h2 class="section-title">Search Quality Evaluation &amp; Relevance Rigor (Phase 12)</h2>
+          <p class="section-desc">Measures, optimizes, and guards SearchForge's ranking quality using a 120-document corpus, 48 benchmark queries across 8 archetypes, formal IR metrics, holdout validation, and an automated 5-gate regression suite.</p>
+        </div>
+
+        <div class="pipeline-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 12px;">Multi-Modal Retrieval Comparison (N=48 Queries)</h3>
+          <div style="overflow-x: auto; margin-bottom: 16px;">
+            <table class="postings-table">
+              <thead>
+                <tr>
+                  <th>Retrieval Modality</th>
+                  <th>NDCG@5</th>
+                  <th>NDCG@10</th>
+                  <th>MAP</th>
+                  <th>MRR</th>
+                  <th>P@5</th>
+                  <th>Latency</th>
+                  <th>Throughput</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>BM25 Lexical</strong></td>
+                  <td>0.8992</td>
+                  <td>0.9094</td>
+                  <td>0.8854</td>
+                  <td>0.9688</td>
+                  <td>0.2917</td>
+                  <td>0.028 ms</td>
+                  <td>35,449 QPS</td>
+                </tr>
+                <tr>
+                  <td><strong>Dense Semantic</strong></td>
+                  <td>0.9272</td>
+                  <td>0.9468</td>
+                  <td>0.9230</td>
+                  <td>0.9844</td>
+                  <td>0.3167</td>
+                  <td>2.410 ms</td>
+                  <td>415 QPS</td>
+                </tr>
+                <tr style="background: rgba(16, 185, 129, 0.1);">
+                  <td><strong style="color: #10b981;">Hybrid (RRF k=60) [WINNER]</strong></td>
+                  <td><strong>0.9303</strong></td>
+                  <td><strong>0.9448</strong></td>
+                  <td><strong>0.9210</strong></td>
+                  <td><strong>0.9792</strong></td>
+                  <td><strong>0.3083</strong></td>
+                  <td>2.554 ms</td>
+                  <td>392 QPS</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #10b981; margin-bottom: 6px;">Consensus Boosting &amp; Mutual Insurance</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                BM25 anchors dense embeddings on exact keyword queries (0.9558 NDCG@5), while semantic search eliminates BM25 polysemy collapse on ambiguous queries (+25.2% NDCG@5 boost).
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">Blind Holdout Validation</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                18-trial parameter grid search evaluated against an untouched holdout EVAL split, preventing semantic weight overfitting and certifying balanced RRF (1.0 : 1.0, k=60) for production.
+              </p>
+            </div>
+            <div style="background: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <h4 style="font-size: 13px; font-weight: 700; color: #f59e0b; margin-bottom: 6px;">5-Gate Quality Regression Suite</h4>
+              <p style="font-size: 12px; color: var(--text-secondary);">
+                Automated regression gates enforce NDCG@10 &ge; 0.930, MRR &ge; 0.950, and MAP &ge; 0.900, backed by mutation testing (reversing and shuffling ranks) to guarantee fail-safe CI/CD checks.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- REST API REFERENCE -->
       <section id="api" class="section-block">
         <div class="section-header">
@@ -1054,8 +1146,8 @@ docker compose up -d
 cd backend
 .\mvnw.cmd spring-boot:run</code></pre>
 
-          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 657 Automated Tests (644 Backend + 13 Frontend)</h3>
-          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 644 Backend Tests
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Option D: Run All 719 Automated Tests (706 Backend + 13 Frontend)</h3>
+          <pre style="background-color: var(--bg-primary); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto;"><code style="color: #10b981;"># Run 706 Backend Tests
 cd backend
 .\mvnw.cmd test
 

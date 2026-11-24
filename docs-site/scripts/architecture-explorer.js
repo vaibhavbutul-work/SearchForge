@@ -182,6 +182,24 @@ const ARCH_SUBSYSTEMS = {
     inputs: "Inbound HTTP headers (X-API-KEY, X-Forwarded-For), crawl seed URLs, query parameters",
     outputs: "Sanitized responses, HTTP 401/429 status codes, RFC 7807 ApiErrorResponse, safe outbound HTTP connections",
     patterns: "Filter Chain Pattern, Token Bucket Algorithm, Defense-in-Depth, Constant-Time Comparison"
+  },
+  "evaluation": {
+    name: "Search Quality & Relevance Engineering (Phase 12)",
+    package: "com.searchforge.ranking.evaluation",
+    responsibility: "Measures, optimizes, and guards search relevance using formal IR metrics, holdout splits, and automated regression quality gates.",
+    classes: [
+      "SearchForgeEvaluationDataset: 120-document corpus and 48-query benchmark across 8 archetypes",
+      "RelevanceMetricsCalculator: Precision@K, Recall@K, MAP, MRR, and NDCG@K implementations",
+      "EvaluationMetricsAggregator: Macro-averaged summaries, category breakdowns, and split analytics",
+      "HybridRelevanceEvaluator: 3-way evaluation harness comparing BM25, Dense Semantic, and Hybrid RRF",
+      "RankingTuningExperimentRunner: 18-trial parameter grid search with blind holdout EVAL validation",
+      "RelevanceLatencyProfiler: High-precision sub-component latency, throughput, and Pareto profiler",
+      "SearchQualityRegressionSuite: Automated 5-gate relevance regression harness with mutation testing",
+      "SearchForgeEvaluationReportRunner: Master publication-grade evaluation summary generator"
+    ],
+    inputs: "48 benchmark queries across 8 archetypes, 120 corpus documents, graded relevance judgments [0, 3]",
+    outputs: "0.9303 NDCG@5, 0.9448 NDCG@10, 0.9792 MRR, 2.55ms P95 latency, 5 passing regression gates",
+    patterns: "Triangulated Evaluation, Reciprocal Rank Fusion, Holdout Generalization, Mutation Fault Injection"
   }
 };
 
