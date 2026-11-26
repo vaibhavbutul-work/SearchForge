@@ -23,7 +23,7 @@ class ApiClient {
     const envUrl = typeof import.meta !== 'undefined' && import.meta.env
       ? import.meta.env.VITE_API_BASE_URL
       : (typeof process !== 'undefined' && process.env ? process.env.VITE_API_BASE_URL : null);
-    this.baseUrl = (envUrl || 'http://localhost:8080').replace(/\/+$/, '');
+    this.baseUrl = (envUrl ?? 'http://localhost:8080').replace(/\/+$/, '');
   }
 
   /**
