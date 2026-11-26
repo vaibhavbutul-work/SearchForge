@@ -97,7 +97,11 @@ public class DocumentEmbeddingService {
 
         // 2. Persist in database for durability across application restarts
         byte[] binaryData = VectorSerialization.toByteArray(docVector.getValues());
-        embeddingRepository.findByDocumentId(documentId).ifPresent(embeddingRepository::delete);
+        embeddingRepository.findByDocumentId(documentId).ifPresent(existing -> {
+            embeddingRepository.delete(existing);
+            // Flush delete before insert so Hibernate ActionQueue doesn't violate unique(document_id)
+            embeddingRepository.flush();
+        });
 
         DocumentEmbeddingEntity newEntity = new DocumentEmbeddingEntity(
                 documentId,
