@@ -1,0 +1,98 @@
+# SearchForge Production Profile Configuration
+# Activate with: SPRING_PROFILES_ACTIVE=prod
+# All sensitive credentials must be injected via environment variables.
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: native
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:searchforge_db}}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: SearchForgeProdPool
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:15}
+      minimum-idle: ${DB_POOL_MIN_IDLE:3}
+      initialization-fail-timeout: 5000
+      connection-timeout: 3000
+      validation-timeout: 2000
+      leak-detection-threshold: 30000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: false
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: db,readinessState,searchIndex
+    env:
+      show-values: never
+    configprops:
+      show-values: never
+
+searchforge:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost}
+  security:
+    enabled: true
+    strict-secrets: true
+    admin-api-key: ${SEARCHFORGE_ADMIN_API_KEY}
+    header-name: "X-API-KEY"
+    crawler:
+      ssrf-protection-enabled: true
+      block-private-ips: true
+      max-redirects: 3
+    rate-limit:
+      enabled: true
+      search-requests-per-minute: ${RATE_LIMIT_SEARCH_RPM:60}
+      search-burst-capacity: ${RATE_LIMIT_SEARCH_BURST:20}
+      admin-requests-per-minute: ${RATE_LIMIT_ADMIN_RPM:20}
+      admin-burst-capacity: ${RATE_LIMIT_ADMIN_BURST:5}
+
+semantic:
+  embedding:
+    enabled: true
+    model-type: ${SEMANTIC_EMBEDDING_MODEL_TYPE:onnx}
+    onnx-model-path: ${SEARCHFORGE_MODEL_PATH:/app/models/all-MiniLM-L6-v2.onnx}
+    allow-fallback-to-deterministic: ${SEMANTIC_EMBEDDING_ALLOW_FALLBACK:false}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}
+    com.searchforge: ${LOG_LEVEL_APP:INFO}
+    org.hibernate.SQL: WARN
+    org.springframework.web: INFO

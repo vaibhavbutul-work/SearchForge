@@ -1,9 +1,12 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  shutdown: ${SERVER_SHUTDOWN:graceful}
 
 spring:
   application:
     name: searchforge
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:searchforge_db}}
@@ -32,12 +35,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when_authorized
       probes:
         enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: db,readinessState,searchIndex
     env:
       show-values: never
     configprops:
@@ -67,9 +75,11 @@ ranking:
     b: 0.75
 
 searchforge:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:3000}
   security:
     enabled: true
-    admin-api-key: ${SEARCHFORGE_ADMIN_API_KEY:sf-admin-secret-key-prod}
+    admin-api-key: ${SEARCHFORGE_ADMIN_API_KEY:}
     header-name: "X-API-KEY"
     crawler:
       ssrf-protection-enabled: true
@@ -81,4 +91,16 @@ searchforge:
       search-burst-capacity: 20
       admin-requests-per-minute: 20
       admin-burst-capacity: 5
+
+semantic:
+  embedding:
+    enabled: true
+    model-type: ${SEMANTIC_EMBEDDING_MODEL_TYPE:deterministic}
+    onnx-model-path: ${SEARCHFORGE_MODEL_PATH:}
+    allow-fallback-to-deterministic: ${SEMANTIC_EMBEDDING_ALLOW_FALLBACK:true}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.searchforge: ${LOG_LEVEL_APP:INFO}
 
