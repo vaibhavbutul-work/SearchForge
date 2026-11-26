@@ -4,6 +4,8 @@ import com.searchforge.crawler.model.CrawledDocument;
 import com.searchforge.crawler.repository.CrawledDocumentRepository;
 import com.searchforge.indexer.service.CorpusSyncResult;
 import com.searchforge.indexer.service.IndexingEngine;
+import com.searchforge.lifecycle.filter.ActiveDocumentFilter;
+import com.searchforge.lifecycle.model.DocumentLifecycleStatus;
 import com.searchforge.semantic.retrieval.DocumentEmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,14 +36,17 @@ public class DevDataLoader implements CommandLineRunner {
     private final CrawledDocumentRepository crawledDocumentRepository;
     private final IndexingEngine indexingEngine;
     private final DocumentEmbeddingService documentEmbeddingService;
+    private final ActiveDocumentFilter activeDocumentFilter;
 
     @Autowired
     public DevDataLoader(CrawledDocumentRepository crawledDocumentRepository,
                          IndexingEngine indexingEngine,
-                         @Autowired(required = false) DocumentEmbeddingService documentEmbeddingService) {
+                         @Autowired(required = false) DocumentEmbeddingService documentEmbeddingService,
+                         @Autowired(required = false) ActiveDocumentFilter activeDocumentFilter) {
         this.crawledDocumentRepository = crawledDocumentRepository;
         this.indexingEngine = indexingEngine;
         this.documentEmbeddingService = documentEmbeddingService;
+        this.activeDocumentFilter = activeDocumentFilter;
     }
 
     @Override
@@ -324,7 +329,13 @@ public class DevDataLoader implements CommandLineRunner {
                 )
         );
 
-        crawledDocumentRepository.saveAll(sampleDocs);
+        for (CrawledDocument doc : sampleDocs) {
+            doc.setStatus(DocumentLifecycleStatus.ACTIVE);
+        }
+        List<CrawledDocument> savedDocs = crawledDocumentRepository.saveAll(sampleDocs);
+        if (activeDocumentFilter != null) {
+            activeDocumentFilter.initialize(savedDocs.stream().map(CrawledDocument::getId).toList());
+        }
         CorpusSyncResult syncResult = indexingEngine.synchronizeCorpus(100);
 
         int embeddingsCreated = 0;
