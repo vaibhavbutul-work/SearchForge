@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("integration")
 @Tag("regression")
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:consistency_recovery_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("Task 14.6: Data Consistency, Concurrency & Recovery Integration Suite")
 class ConsistencyConcurrencyRecoveryTest {

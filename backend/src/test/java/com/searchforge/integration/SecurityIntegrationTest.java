@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("security")
 @Tag("regression")
 @SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:security_integration_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL",
         "searchforge.security.enabled=true",
         "searchforge.security.admin-api-key=integration-test-admin-secret-key-2026",
         "searchforge.security.rate-limit.enabled=true",
