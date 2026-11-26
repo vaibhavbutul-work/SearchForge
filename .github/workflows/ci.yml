@@ -82,7 +82,7 @@ jobs:
 
       - name: Execute Frontend Test Suite
         working-directory: frontend
-        run: npm test -- --run
+        run: npm test
 
       - name: Build Production Vite Bundle
         working-directory: frontend

@@ -9,7 +9,7 @@ SearchForge uses GitHub Actions ([.github/workflows/ci.yml](file:///d:/projects/
 | Job | Trigger / Dependencies | Validations | Caching |
 | :--- | :--- | :--- | :--- |
 | **`backend-build-and-test`** | Parallel on push/PR | Java 21 compilation, full JUnit 5 suite (`./mvnw test`), Surefire report upload, fat-JAR packaging | Maven (`~/.m2`) + ONNX model (`~/.cache/searchforge`) |
-| **`frontend-build-and-test`** | Parallel on push/PR | `npm ci`, Node test suite (`npm test -- --run`), production Vite build (`VITE_API_BASE_URL=""`) | npm (`frontend/package-lock.json`) |
+| **`frontend-build-and-test`** | Parallel on push/PR | `npm ci`, Node test suite (`npm test`), production Vite build (`VITE_API_BASE_URL=""`) | npm (`frontend/package-lock.json`) |
 | **`security-hygiene`** | Parallel on push/PR | Verifies `.env` / `frontend/.env` are not tracked by Git; runs `npm audit --omit=dev --audit-level=high` | npm |
 | **`container-validation`** | `needs: [backend-build-and-test, frontend-build-and-test]` | Validates `docker-compose.prod.yml` schema and builds both multi-stage Docker images (`searchforge-backend:ci`, `searchforge-frontend:ci`) | Docker Buildx |
 
