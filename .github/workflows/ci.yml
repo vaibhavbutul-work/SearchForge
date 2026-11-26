@@ -6,13 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-and-test:
-    name: Build & Hermetic Test Suite (Java 21)
+  backend-build-and-test:
+    name: Backend Build & Test Suite (Java 21)
     runs-on: ubuntu-latest
 
     steps:
@@ -42,10 +45,95 @@ jobs:
           mkdir -p ~/.cache/searchforge
           curl -sSL -o ~/.cache/searchforge/all-MiniLM-L6-v2.onnx https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx || true
 
-      - name: Execute Full Test Suite (719 Tests)
+      - name: Execute Backend Test Suite
         working-directory: backend
-        run: mvn test --batch-mode --no-transfer-progress || ./mvnw test --batch-mode --no-transfer-progress
+        run: ./mvnw test --batch-mode --no-transfer-progress
+
+      - name: Upload Surefire Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: backend/target/surefire-reports/
+          retention-days: 7
 
       - name: Package Executable JAR
         working-directory: backend
-        run: mvn package -DskipTests --batch-mode --no-transfer-progress || ./mvnw package -DskipTests --batch-mode --no-transfer-progress
+        run: ./mvnw package -DskipTests --batch-mode --no-transfer-progress
+
+  frontend-build-and-test:
+    name: Frontend Build & Test Suite (Node 20)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Execute Frontend Test Suite
+        working-directory: frontend
+        run: npm test -- --run
+
+      - name: Build Production Vite Bundle
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ""
+        run: npm run build
+
+  security-hygiene:
+    name: Secret & Dependency Hygiene Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Verify No .env Secrets Are Tracked in Git
+        run: |
+          if git ls-files --error-unmatch .env frontend/.env 2>/dev/null; then
+            echo "ERROR: .env file is tracked in Git!"
+            exit 1
+          fi
+          echo "Verified: No .env files are tracked in Git."
+
+      - name: Set up Node.js 20 LTS for Dependency Audit
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend Production Dependency Vulnerability Audit
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  container-validation:
+    name: Docker Compose & Image Build Validation
+    runs-on: ubuntu-latest
+    needs: [backend-build-and-test, frontend-build-and-test]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Validate Production Docker Compose Configuration
+        run: docker compose -f docker-compose.prod.yml --env-file .env.example config --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker Image
+        run: docker buildx build --load -t searchforge-backend:ci ./backend
+
+      - name: Build Frontend Docker Image
+        run: docker buildx build --load -t searchforge-frontend:ci ./frontend
