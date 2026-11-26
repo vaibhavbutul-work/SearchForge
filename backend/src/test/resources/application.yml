@@ -17,6 +17,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+  flyway:
+    enabled: false
 
 crawler:
   user-agent: "SearchForgeBot/1.0 (TestEnvironment)"
