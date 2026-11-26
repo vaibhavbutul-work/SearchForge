@@ -10,6 +10,7 @@ import com.searchforge.semantic.vector.VectorStorage;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.SpringApplication;
@@ -21,6 +22,8 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("integration")
+@Tag("regression")
 @DisplayName("Task 13.8: Rollback, Recovery & Operational Resilience Tests")
 class OperationalResilienceTest {
 

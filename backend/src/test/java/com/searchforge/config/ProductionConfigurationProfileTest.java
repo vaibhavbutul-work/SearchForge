@@ -3,6 +3,7 @@ package com.searchforge.config;
 import com.searchforge.security.SecurityProperties;
 import com.searchforge.security.SecurityStartupValidator;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -15,6 +16,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("integration")
+@Tag("regression")
 @DisplayName("Task 13.2: Production Configuration Profile & Fail-Fast Validation Tests")
 class ProductionConfigurationProfileTest {
 

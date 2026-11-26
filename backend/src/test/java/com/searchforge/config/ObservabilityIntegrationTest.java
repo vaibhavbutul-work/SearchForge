@@ -2,6 +2,7 @@ package com.searchforge.config;
 
 import com.searchforge.config.observability.RequestCorrelationFilter;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@Tag("integration")
+@Tag("regression")
 @SpringBootTest(properties = {
         "management.endpoints.web.exposure.include=health,info,metrics,prometheus",
         "management.endpoint.health.probes.enabled=true"

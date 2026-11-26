@@ -3,6 +3,7 @@ package com.searchforge.config;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.SpringApplication;
@@ -18,6 +19,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("integration")
+@Tag("regression")
 @DisplayName("Task 13.4: Flyway Schema Migration & Hibernate Validation Tests")
 class FlywayMigrationTest {
 
